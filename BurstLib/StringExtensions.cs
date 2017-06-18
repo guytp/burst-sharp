@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Guytp.BurstSharp.Miner
+namespace Guytp.BurstSharp.BurstLib
 {
     public static class StringExtensions
     {

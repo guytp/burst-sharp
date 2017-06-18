@@ -1,5 +1,5 @@
 ﻿using System;
-using Guytp.BurstSharp.Plotter;
+using Guytp.BurstSharp.BurstLib;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;

@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Diagnostics;
 using System.Linq;
+using Guytp.BurstSharp.BurstLib;
 
 namespace Guytp.BurstSharp.Plotter
 {

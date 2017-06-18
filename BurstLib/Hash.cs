@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-namespace Guytp.BurstSharp.Plotter
+namespace Guytp.BurstSharp.BurstLib
 {
     public abstract class Hash
     {

@@ -1,11 +1,11 @@
 ﻿using System;
 
-namespace Guytp.BurstSharp.Plotter
+namespace Guytp.BurstSharp.BurstLib
 {
     public class Shabal224 : Shabal
     {
         public Shabal224()
-            : base(Plotter.HashSize.HashSize224)
+            : base(BurstLib.HashSize.HashSize224)
         {
         }
     }
@@ -13,7 +13,7 @@ namespace Guytp.BurstSharp.Plotter
     public class Shabal256 : Shabal
     {
         public Shabal256()
-            : base(Plotter.HashSize.HashSize256)
+            : base(BurstLib.HashSize.HashSize256)
         {
         }
     }
@@ -21,7 +21,7 @@ namespace Guytp.BurstSharp.Plotter
     public class Shabal384 : Shabal
     {
         public Shabal384()
-            : base(Plotter.HashSize.HashSize384)
+            : base(BurstLib.HashSize.HashSize384)
         {
         }
     }
@@ -29,7 +29,7 @@ namespace Guytp.BurstSharp.Plotter
     public class Shabal512 : Shabal
     {
         public Shabal512()
-            : base(Plotter.HashSize.HashSize512)
+            : base(BurstLib.HashSize.HashSize512)
         {
         }
     }

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Guytp.BurstSharp.Plotter
+namespace Guytp.BurstSharp.BurstLib
 {
     [DebuggerStepThrough]
     internal static class ArrayExtensions

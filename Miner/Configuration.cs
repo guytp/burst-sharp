@@ -1,4 +1,6 @@
-﻿namespace Guytp.BurstSharp.Miner
+﻿using System;
+
+namespace Guytp.BurstSharp.Miner
 {
     /// <summary>
     /// Defines a configuration that is used by the miner.

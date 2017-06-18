@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CorePlotter\Plotter.csproj" />
+    <ProjectReference Include="..\BurstLib\BurstLib.csproj" />
   </ItemGroup>
 
 </Project>

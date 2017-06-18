@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Text;
 
-namespace Guytp.BurstSharp.Plotter
+namespace Guytp.BurstSharp.BurstLib
 {
     public static class Converters
     {

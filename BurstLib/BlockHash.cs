@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace Guytp.BurstSharp.Plotter
+namespace Guytp.BurstSharp.BurstLib
 {
     public abstract class BlockHash : Hash
     {

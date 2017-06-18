@@ -6,4 +6,8 @@
     <RootNamespace>Guytp.BurstSharp.Plotter</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BurstLib\BurstLib.csproj" />
+  </ItemGroup>
+
 </Project>
