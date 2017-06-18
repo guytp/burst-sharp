@@ -7,8 +7,6 @@ namespace Guytp.BurstSharp.Miner
         static void Main(string[] args)
         {
             /* ToDo
-             * Not sure deadline is correct truncation - see https://github.com/burst-team/burstcoin/blob/master/src/java/nxt/GeneratorImpl.java#L175
-             * Multi-thread the noncing versus reading
              * Ability to actually submit to a pool (only best deadline per account)
              * Other stagger sizes
              * Solo mining
