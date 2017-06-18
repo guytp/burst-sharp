@@ -101,6 +101,9 @@ namespace Guytp.BurstSharp.Miner
             string[] files = Directory.GetFiles(_directory, "*_*_*_*");
             byte[] readBuffer = null;
             List<Scoop> scoops = new List<Scoop>(500);
+            ulong allBytesRead = 0;
+            Stopwatch swTotal = new Stopwatch();
+            swTotal.Start();
             foreach (string file in files)
             {
                 // Get handle to file and ensure it is valid
@@ -144,6 +147,12 @@ namespace Guytp.BurstSharp.Miner
                     continue;
                 }
 
+#if STUB
+                // If we're on stub nonces then check if this file contains it
+                if (Configuration.StubNonce > 0 && (startNonce > Configuration.StubNonce || startNonce + numberOfNonces < Configuration.StubNonce))
+                    continue;
+#endif
+
                 // Now we have a good plot file let's take our scoop and for each nonce process it
                 uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
                 try
@@ -168,7 +177,10 @@ namespace Guytp.BurstSharp.Miner
                             remainingToRead -= read;
                             scoops.Clear();
                             for (uint bufferOffset = 0; bufferOffset < read; bufferOffset += Plot.SCOOP_SIZE, currentNonce++)
-                                scoops.Add(new Scoop(_miningInfo.BlockHeight, currentNonce, accountId, readBuffer, bufferOffset));
+#if STUB
+                                if (Configuration.StubNonce == 0 || Configuration.StubNonce == currentNonce)
+#endif
+                                    scoops.Add(new Scoop(_miningInfo.BlockHeight, currentNonce, accountId, readBuffer, bufferOffset));
 
                             // Notify our callers
                             ScoopsDiscovered?.Invoke(this, new ScoopsDiscoveredEventArgs(scoops));
@@ -186,19 +198,21 @@ namespace Guytp.BurstSharp.Miner
                 sw.Stop();
                 double secs = sw.Elapsed.TotalSeconds;
                 double bps = desiredBufferSize / secs;
+                allBytesRead += desiredBufferSize;
                 double mbps = bps / 1024 / 1024;
-                Logger.Info(String.Format("Processed {0} in {1} secs = {2} MBps", Path.GetFileName(file), secs, mbps));
+                Logger.Info(String.Format("Processed {0} in {1} secs = {2} MBps", file, secs, mbps));
 
                 // Return if we're done
                 if (!_isAlive)
                     break;
             }
+            Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (allBytesRead / swTotal.Elapsed.TotalSeconds) / 1024 / 1024, allBytesRead/1024/1024/1024));
             _isAlive = false;
             _miningThread = null;
         }
 
 
-        #region IDisposable Implementation
+#region IDisposable Implementation
         /// <summary>
         /// Free up our resources.
         /// </summary>
@@ -206,7 +220,7 @@ namespace Guytp.BurstSharp.Miner
         {
             Terminate();
         }
-        #endregion
+#endregion
     }
 }
  

@@ -81,7 +81,7 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         private void PlotCheckerOnDeadlineFound(object sender, DeadlineFoundEventArgs e)
         {
-            Logger.Info("Deadline discovered of " + e.Deadline + " on block " + e.MiningInfo.BlockHeight + " for account " + e.Scoop.AccountId); ;
+            Logger.Info("Deadline discovered of " + TimeSpan.FromSeconds(e.Deadline) + " on block " + e.MiningInfo.BlockHeight + " for account " + e.Scoop.AccountId); ;
         }
         #endregion
 

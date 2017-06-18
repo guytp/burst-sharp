@@ -14,15 +14,21 @@ namespace Guytp.BurstSharp.Miner
         {
             get
             {
-                return new string[] { @"\\gtp-npt-san-01\plot", @"\\tsclient\root\mnt\Plot03", @"\\tsclient\root\mnt\SAN-02\Plot" };
+                return new string[] { @"\\gtp-npt-san-01\plot", @"\\tsclient\root\mnt\Plot03", @"\\10.0.1.32\Plot02" };
             }
         }
+
+#if STUB
+        public static string StubJson = "{\"generationSignature\":\"313d2e263791718787dce43e74c08c5973179e3d356e2398da82252ab341e9be\",\"baseTarget\":\"347848\",\"requestProcessingTime\":16,\"height\":\"372517\",\"targetDeadline\":580000}";
+
+        public static ulong StubNonce = 52167538;
+#endif
 
         /// <summary>
         /// Gets the URL for the pool that we are using.
         /// </summary>
-        //public static string PoolApiUrl {  get { return "http://pool.burstcoin.sk"; } }
-        public static string PoolApiUrl { get { return "http://burst.ninja"; } }
+        public static string PoolApiUrl {  get { return "http://pool.burstcoin.sk"; } }
+        //public static string PoolApiUrl { get { return "http://burst.ninja"; } }
 
         /// <summary>
         /// Gets the maximum amount of RAM that can be allocated to each reader.

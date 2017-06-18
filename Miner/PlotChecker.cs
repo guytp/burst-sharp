@@ -82,6 +82,7 @@ namespace Guytp.BurstSharp.Miner
         {
             Shabal256 shabal = new Shabal256();
             byte[] hashBuffer = new byte[32 + Plot.SCOOP_SIZE];
+            ulong lastBlockHeightPrevGenCopied = 0;
             while (_isAlive)
             {
                 // Get a few items from the queue to process
@@ -115,13 +116,14 @@ namespace Guytp.BurstSharp.Miner
                         continue;
 
                     // Calculate the deadline for this scoop
-                    Array.Copy(_miningInfo.PreviousGenerationSignatureBytes, hashBuffer, 32);
-                    Array.Copy(scoop.Data, 0, hashBuffer, 32, 32);
+                    if (lastBlockHeightPrevGenCopied != _miningInfo.BlockHeight)
+                    {
+                        Array.Copy(_miningInfo.PreviousGenerationSignatureBytes, hashBuffer, 32);
+                        lastBlockHeightPrevGenCopied = _miningInfo.BlockHeight;
+                    }
+                    Array.Copy(scoop.Data, 0, hashBuffer, 32, Plot.SCOOP_SIZE);
                     byte[] target = shabal.ComputeBytes(hashBuffer).GetBytes();
-                    byte[] targetSwizzled = new byte[8];
-                    Array.Copy(target, targetSwizzled, 8);
-                    Array.Reverse(targetSwizzled);
-                    ulong targetResult = BitConverter.ToUInt64(targetSwizzled, 0);
+                    ulong targetResult = BitConverter.ToUInt64(target, 0);
 
                     // And with our target compute a deadline
                     ulong deadline = targetResult / _miningInfo.BaseTarget;
