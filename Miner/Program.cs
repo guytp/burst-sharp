@@ -7,9 +7,16 @@ namespace Guytp.BurstSharp.Miner
         static void Main(string[] args)
         {
             /* ToDo
-             * Ability to actually submit to a pool (only best deadline per account)
-             * Other stagger sizes
-             * Solo mining
+             * Miner
+             *      Ability to actually submit to a pool (only best deadline per account)
+             *      Other stagger sizes
+             *      Solo mining
+             *      More granular CPU/memory configuration
+             * Duplicate nonce detector
+             * Plotter
+             *      Suggest next nonce based on existing on disk
+             *      "Fill Disk" option to chose number of plots
+             * GUIs
              */
 
             using (Miner miner = new Miner())
