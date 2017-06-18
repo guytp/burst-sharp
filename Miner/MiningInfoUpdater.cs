@@ -70,7 +70,7 @@ namespace Guytp.BurstSharp.Miner
         {
             _client = new HttpClient();
             _client.Timeout = TimeSpan.FromSeconds(2);
-            _client.BaseAddress = new Uri("http://pool.burstcoin.sk");
+            _client.BaseAddress = new Uri(Configuration.PoolApiUrl);
             _isAlive = true;
             _miningInfoThread = new Thread(MiningInfoThread) { Name = "Mining Info", IsBackground = true };
             _miningInfoThread.Start();

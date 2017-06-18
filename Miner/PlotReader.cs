@@ -1,5 +1,6 @@
 ﻿using Guytp.BurstSharp.BurstLib;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -36,11 +37,13 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the current scoop for the active thread.
         /// </summary>
         private ulong _scoop;
+        #endregion
 
+        #region Events
         /// <summary>
-        /// Defines our hashing algorithm.
+        /// Fired whenever new scoops are discovered.
         /// </summary>
-        private Shabal256 _shabal;
+        public event EventHandler<ScoopsDiscoveredEventArgs> ScoopsDiscovered;
         #endregion
 
         #region Constructors
@@ -53,7 +56,6 @@ namespace Guytp.BurstSharp.Miner
         public PlotReader(string directory)
         {
             _directory = directory;
-            _shabal = new Shabal256();
         }
         #endregion
 
@@ -97,8 +99,8 @@ namespace Guytp.BurstSharp.Miner
         private void ThreadEntry()
         {
             string[] files = Directory.GetFiles(_directory, "*_*_*_*");
-            byte[] hashBuffer = new byte[32 + Plot.SCOOP_SIZE];
-            Array.Copy(_miningInfo.PreviousGenerationSignatureBytes, hashBuffer, 32);
+            byte[] readBuffer = null;
+            List<Scoop> scoops = new List<Scoop>(500);
             foreach (string file in files)
             {
                 // Get handle to file and ensure it is valid
@@ -143,35 +145,33 @@ namespace Guytp.BurstSharp.Miner
                 }
 
                 // Now we have a good plot file let's take our scoop and for each nonce process it
-                uint totalScoopSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
+                uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
                 try
                 {
                     using (FileStream stream = File.Open(file, FileMode.Open, FileAccess.Read))
                     {
+                        // Create our reading buffers
+                        uint remainingToRead = desiredBufferSize;
+                        uint bufferSize = desiredBufferSize > Configuration.MemoryLimitPerReader ? Configuration.MemoryLimitPerReader : desiredBufferSize;
+                        if (readBuffer == null || readBuffer.Length < bufferSize)
+                            readBuffer = new byte[bufferSize];
+
                         // Move to begining for optimized read
-                        long offset = (long)(_scoop * totalScoopSize);
+                        long offset = (long)(_scoop * desiredBufferSize);
                         stream.Seek(offset, SeekOrigin.Begin);
 
                         // Keep reading in large chunks up to maximum memory permitted and then handover to have deadline calculated elsewhere
-                        //byte[] readBuffer = new byte[Plot.SCOOP_SIZE * numberOfNonces];
-                        //stream.Read(readBuffer, 0, readBuffer.Length);
-
-                        for (ulong nonce = 0; nonce < numberOfNonces; nonce++)
+                        ulong currentNonce = startNonce;
+                        while (remainingToRead > 0)
                         {
-                            // Read this scoop into our buffer
-                            stream.Read(hashBuffer, 32, Plot.SCOOP_SIZE);
+                            uint read = (uint)stream.Read(readBuffer, 0, (int)(remainingToRead > bufferSize ? bufferSize : remainingToRead));
+                            remainingToRead -= read;
+                            scoops.Clear();
+                            for (uint bufferOffset = 0; bufferOffset < read; bufferOffset += Plot.SCOOP_SIZE, currentNonce++)
+                                scoops.Add(new Scoop(_miningInfo.BlockHeight, currentNonce, accountId, readBuffer, bufferOffset));
 
-                            // Determine the target from this scoop
-                            byte[] target = _shabal.ComputeBytes(hashBuffer).GetBytes();
-                            byte[] targetSwizzled = new byte[8];
-                            Array.Copy(target, targetSwizzled, 8);
-                            Array.Reverse(targetSwizzled);
-                            ulong targetResult = BitConverter.ToUInt64(targetSwizzled, 0);
-
-                            // And with our target compute a deadline
-                            ulong deadline = targetResult / _miningInfo.BaseTarget;
-                            if (deadline < _miningInfo.Deadline)
-                                Logger.Info("Found new deadline " + TimeSpan.FromSeconds(deadline) + " for block height " + _miningInfo.BlockHeight);
+                            // Notify our callers
+                            ScoopsDiscovered?.Invoke(this, new ScoopsDiscoveredEventArgs(scoops));
 
                             // Return if we're done
                             if (!_isAlive)
@@ -185,7 +185,7 @@ namespace Guytp.BurstSharp.Miner
                 }
                 sw.Stop();
                 double secs = sw.Elapsed.TotalSeconds;
-                double bps = totalScoopSize / secs;
+                double bps = desiredBufferSize / secs;
                 double mbps = bps / 1024 / 1024;
                 Logger.Info(String.Format("Processed {0} in {1} secs = {2} MBps", Path.GetFileName(file), secs, mbps));
 

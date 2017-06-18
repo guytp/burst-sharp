@@ -7,7 +7,8 @@ using System.Threading;
 namespace Guytp.BurstSharp.Miner
 {
     /// <summary>
-    /// The plot reader manager is responsible for performing common mining functionality (i.e. scoop determination) before passing it over to individual plot readers to actually mine the data on disk.
+    /// The plot reader manager is responsible for performing common mining functionality (i.e. scoop determination) before passing it over to individual plot readers to actually mine the data on disk,
+    /// once those readers discover a plot it is then responsible for handing this over to a plot checker to perform deadline checking.
     /// </summary>
     public class PlotReaderManager : IDisposable
     {
@@ -21,6 +22,11 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the hashing algorithm.
         /// </summary>
         private Shabal256 _shabel;
+
+        /// <summary>
+        /// Defines the plot checker we use to calculate deadlines.
+        /// </summary>
+        private PlotChecker _plotChecker;
         #endregion
 
         #region Constructors
@@ -29,13 +35,53 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public PlotReaderManager()
         {
+            // Create our shabel for local hashing when determining the scoop number for each block
+            _shabel = new Shabal256();
+
+            // Create our plot checker and hook up to its events
+            _plotChecker = new PlotChecker(Configuration.MemoryLimitPlotChecker / Plot.SCOOP_SIZE, Configuration.ThreadCountPlotChecker);
+            _plotChecker.DeadlineFound += PlotCheckerOnDeadlineFound;
+
+            // Now create and hook up to these events
             if (Configuration.PlotDirectories != null && Configuration.PlotDirectories.Length > 0)
             {
                 _plotReaders = new PlotReader[Configuration.PlotDirectories.Length];
                 for (int i = 0; i < Configuration.PlotDirectories.Length; i++)
+                {
                     _plotReaders[i] = new PlotReader(Configuration.PlotDirectories[i]);
+                    _plotReaders[i].ScoopsDiscovered += PlotReaderOnScoopsDiscovered;
+                }
             }
-            _shabel = new Shabal256();
+        }
+        #endregion
+
+        #region Event Handlers
+        /// <summary>
+        /// Handle new scoops being discovered and pass it over to the plot checker.
+        /// </summary>
+        /// <param name="sender">
+        /// The event sender.
+        /// </param>
+        /// <param name="e">
+        /// The event arguments.
+        /// </param>
+        private void PlotReaderOnScoopsDiscovered(object sender, ScoopsDiscoveredEventArgs e)
+        {
+            _plotChecker?.Enqueue(e.Scoops);
+        }
+
+        /// <summary>
+        /// Handle a deadline being discovered by the plot checker.
+        /// </summary>
+        /// <param name="sender">
+        /// The event sender.
+        /// </param>
+        /// <param name="e">
+        /// The event arguments.
+        /// </param>
+        private void PlotCheckerOnDeadlineFound(object sender, DeadlineFoundEventArgs e)
+        {
+            Logger.Info("Deadline discovered of " + e.Deadline + " on block " + e.MiningInfo.BlockHeight + " for account " + e.Scoop.AccountId); ;
         }
         #endregion
 
@@ -50,6 +96,9 @@ namespace Guytp.BurstSharp.Miner
             // First let's kill any existing plot reading
             foreach (PlotReader reader in _plotReaders)
                 reader.Terminate();
+
+            // Inform the plot checker of new block
+            _plotChecker?.Reset(miningInfo);
 
             // If no mining information stop now
             if (miningInfo == null)
@@ -91,8 +140,17 @@ namespace Guytp.BurstSharp.Miner
             if (_plotReaders != null)
             {
                 foreach (PlotReader reader in _plotReaders)
+                {
+                    reader.ScoopsDiscovered -= PlotReaderOnScoopsDiscovered;
                     reader.Dispose();
+                }
                 _plotReaders = null;
+            }
+            if (_plotChecker != null)
+            {
+                _plotChecker.DeadlineFound -= PlotCheckerOnDeadlineFound;
+                _plotChecker?.Dispose();
+
             }
         }
         #endregion
