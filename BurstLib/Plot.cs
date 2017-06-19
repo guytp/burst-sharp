@@ -19,9 +19,11 @@ namespace Guytp.BurstSharp.BurstLib
         public Plot(ulong accountId, ulong nonce)
         {
             byte[] accountIdBytes = BitConverter.GetBytes(accountId);
-            Array.Reverse(accountIdBytes);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(accountIdBytes);
             byte[] nonceBytes = BitConverter.GetBytes(nonce);
-            Array.Reverse(nonceBytes);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(nonceBytes);
             byte[] baseBuffer = new byte[16];
             Array.Copy(accountIdBytes, baseBuffer, 8);
             Array.Copy(nonceBytes, 0, baseBuffer, 8, 8);

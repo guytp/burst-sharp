@@ -29,10 +29,12 @@ namespace Guytp.BurstSharp.Miner
             BaseTarget = ulong.Parse(baseTarget);
             BlockHeight = ulong.Parse(height);
             BlockHeightBytes = BitConverter.GetBytes(BlockHeight);
-            Array.Reverse(BlockHeightBytes);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(BlockHeightBytes);
             Deadline = targetDeadline;
             DeadlineBytes = BitConverter.GetBytes(Deadline);
-            Array.Reverse(DeadlineBytes);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(DeadlineBytes);
         }
     }
 }
