@@ -14,8 +14,8 @@ namespace Guytp.BurstSharp.Miner
         {
             get
             {
-                return new string[] { @"/mnt/Plot" };
-                //return new string[] { @"\\10.0.1.32\Plot02" };
+                //return new string[] { @"/mnt/Plot" };
+                return new string[] { @"\\10.0.1.32\Plot02" };
             }
         }
 

@@ -17,6 +17,16 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the object that coordinates reading of plots across different disks.
         /// </summary>
         private PlotReaderManager _plotReaderManager;
+
+        /// <summary>
+        /// Defines the console UI for this miner.
+        /// </summary>
+        private ConsoleUi _consoleUi;
+
+        /// <summary>
+        /// Defines whether the miner has been started.
+        /// </summary>
+        private bool _started;
         #endregion
 
         #region Constructors
@@ -25,10 +35,6 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public Miner()
         {
-            Logger.Info("Miner starting up");
-            _plotReaderManager = new PlotReaderManager();
-            _miningInfoUpdater = new MiningInfoUpdater();
-            _miningInfoUpdater.PropertyChanged += OnMiningInfoUpdate;
         }
         #endregion
 
@@ -48,6 +54,22 @@ namespace Guytp.BurstSharp.Miner
         }
         #endregion
 
+        /// <summary>
+        /// Start the miner.
+        /// </summary>
+        public void Run()
+        {
+            if (_started)
+                throw new Exception("Already started");
+            _started = true;
+            _consoleUi = new ConsoleUi();
+            Logger.Info("Miner starting up");
+            _plotReaderManager = new PlotReaderManager();
+            _miningInfoUpdater = new MiningInfoUpdater();
+            _miningInfoUpdater.PropertyChanged += OnMiningInfoUpdate;
+            _consoleUi.Run();
+        }
+
         #region IDisposable Implementation
         /// <summary>
         /// Free up our resources.
@@ -65,6 +87,8 @@ namespace Guytp.BurstSharp.Miner
                 _plotReaderManager.Dispose();
                 _plotReaderManager = null;
             }
+            if (_consoleUi != null)
+                _consoleUi.Dispose();
             Logger.Info("Miner disposed");
         }
         #endregion

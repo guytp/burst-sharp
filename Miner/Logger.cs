@@ -6,14 +6,14 @@ namespace Guytp.BurstSharp.Miner
     {
         public static void Error(string message, Exception ex = null)
         {
-            Console.WriteLine(message);
+            ConsoleUi.WriteLine(message);
             if (ex != null)
-                Console.WriteLine(ex.ToString());
+                ConsoleUi.WriteLine(ex.ToString());
         }
 
         public static void Info(string message)
         {
-            Console.WriteLine(message);
+            ConsoleUi.WriteLine(message);
         }
     }
 }

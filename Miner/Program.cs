@@ -9,6 +9,10 @@ namespace Guytp.BurstSharp.Miner
             /* ToDo
              * Miner
              *      Ability to actually submit to a pool (only best deadline per account)
+             *      Console UI binds Exit F-Key and makes nonce-side of window active and max-widthed to 80px with header
+             *      Loadable config file
+             *      Report % completion
+             *      Improved logger with different log levels/colours for output
              *      Other stagger sizes
              *      Solo mining
              *      More granular CPU/memory configuration
@@ -21,10 +25,8 @@ namespace Guytp.BurstSharp.Miner
 
             using (Miner miner = new Miner())
             {
-                Console.Write("Press any key to exit... ");
-                Console.ReadKey();
+                miner.Run();
             }
         }
-
     }
 }
