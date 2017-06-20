@@ -88,7 +88,8 @@ namespace Guytp.BurstSharp.Miner
             _isAlive = false;
             if (_miningThread != null)
             {
-                _miningThread?.Join();
+                Logger.Info("Waiting for miner of \"" + _directory + "\" to finish");
+                _miningThread.Join();
                 _miningThread = null;
             }
         }

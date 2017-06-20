@@ -66,6 +66,16 @@ namespace Guytp.BurstSharp.Miner
         private readonly string[] _functionKeyLabels = new string[] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, "Quit" };
 
         /// <summary>
+        /// Defines the key presses that each function is tied to.
+        /// </summary>
+        private readonly Action[] _functionKeyActions = new Action[10];
+
+        /// <summary>
+        /// Defines the key press that ends the console UI loop.
+        /// </summary>
+        private readonly Action _exitAction;
+
+        /// <summary>
         /// Defines whether the whole screen needs a redraw due to a rendering issue.
         /// </summary>
         private bool _redrawRequired;
@@ -96,6 +106,14 @@ namespace Guytp.BurstSharp.Miner
             // Store ourselves as app instance if not pre-existing
             if (_applicationInstance == null)
                 _applicationInstance = this;
+
+            // Setup action
+            _exitAction = new Action(() =>
+            {
+                Logger.Info("Exiting burst-sharp miner");
+                _isAlive = false;
+            });
+            _functionKeyActions[9] = _exitAction;
 
             // Create our size monitoring thread
             _isAlive = true;
@@ -143,6 +161,7 @@ namespace Guytp.BurstSharp.Miner
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.BufferHeight = _windowHeight;
                 Console.BufferWidth = _windowWidth;
+                Console.TreatControlCAsInput = true;
                 Console.CursorVisible = false;
                 Console.Title = "burst-sharp miner";
                 Console.Clear();
@@ -366,7 +385,10 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         public static void WriteLine(string text)
         {
-            _applicationInstance?.InternalWriteLine(text);
+            if (_applicationInstance == null || !_applicationInstance._isAlive)
+                Console.WriteLine(text);
+            else
+                _applicationInstance.InternalWriteLine(text);
         }
 
         /// <summary>
@@ -375,7 +397,59 @@ namespace Guytp.BurstSharp.Miner
         public void Run()
         {
             while (_isAlive)
-                Console.ReadKey(true);
+            {
+                ConsoleKeyInfo keyPress = Console.ReadKey(true);
+                Action callbackAction = null;
+                if (keyPress.Key == ConsoleKey.C && keyPress.Modifiers == ConsoleModifiers.Control)
+                    callbackAction = _exitAction;
+                else
+                    switch (keyPress.Key)
+                    {
+                        case ConsoleKey.F1:
+                            callbackAction = _functionKeyActions[0];
+                            break;
+                        case ConsoleKey.F2:
+                            callbackAction = _functionKeyActions[1];
+                            break;
+                        case ConsoleKey.F3:
+                            callbackAction = _functionKeyActions[2];
+                            break;
+                        case ConsoleKey.F4:
+                            callbackAction = _functionKeyActions[3];
+                            break;
+                        case ConsoleKey.F5:
+                            callbackAction = _functionKeyActions[4];
+                            break;
+                        case ConsoleKey.F6:
+                            callbackAction = _functionKeyActions[5];
+                            break;
+                        case ConsoleKey.F7:
+                            callbackAction = _functionKeyActions[6];
+                            break;
+                        case ConsoleKey.F8:
+                            callbackAction = _functionKeyActions[7];
+                            break;
+                        case ConsoleKey.F9:
+                            callbackAction = _functionKeyActions[8];
+                            break;
+                        case ConsoleKey.F10:
+                            callbackAction = _functionKeyActions[9];
+                            break;
+                    }
+                try
+                {
+                    if (callbackAction != null)
+                        callbackAction.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Error handling " + keyPress.Key + " key press.", ex);
+                }
+            }
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.Clear();
+            Logger.Info("UI has terminated");
         }
 
         #region IDisposable Implementation
@@ -390,6 +464,8 @@ namespace Guytp.BurstSharp.Miner
                 _consoleSizeThread.Join();
                 _consoleSizeThread = null;
             }
+            if (_applicationInstance == this)
+                _applicationInstance = null;
         }
         #endregion
     }
