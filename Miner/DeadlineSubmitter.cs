@@ -134,10 +134,11 @@ namespace Guytp.BurstSharp.Miner
                             ConsoleUi.DisplayDeadline(deadline);
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         deadline.SubmissionFailed();
                         ConsoleUi.DisplayDeadline(deadline);
+                        Logger.Error("Failed to submit deadline", ex);
                     }
                 }
 

@@ -83,7 +83,7 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public void Submit()
         {
-            if (Status != DeadlineStatus.Found)
+            if (Status != DeadlineStatus.Found && Status != DeadlineStatus.SubmissionFailure)
                 throw new Exception("Invalid state transition");
             Status = DeadlineStatus.Submitted;
         }
@@ -93,7 +93,7 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public void SubmissionFailed()
         {
-            if (Status != DeadlineStatus.Submitted && Status != DeadlineStatus.SubmissionFailure)
+            if (Status != DeadlineStatus.Submitted)
                 throw new Exception("Invalid state transition");
             NextSubmissionDate = DateTime.UtcNow.AddSeconds(5);
             Status = DeadlineStatus.SubmissionFailure;

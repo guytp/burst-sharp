@@ -1,0 +1,9 @@
+﻿{
+  "PlotDirectories": [
+    "\\\\10.0.1.31\\Plot"
+  ],
+  "PoolApiUrl": "http://pool.burstcoin.sk",
+  "ThreadCountPlotChecker": 4,
+  "MemoryLimitPerReader": 500,
+  "MemoryLimitPlotChecker":  500
+}

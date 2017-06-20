@@ -19,4 +19,10 @@
     <ProjectReference Include="..\BurstLib\BurstLib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="miner-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
