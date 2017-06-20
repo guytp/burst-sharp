@@ -98,54 +98,56 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         private void ThreadEntry()
         {
-            string[] files = Directory.GetFiles(_directory, "*_*_*_*");
-            byte[] readBuffer = null;
-            List<Scoop> scoops = new List<Scoop>(500);
-            ulong allBytesRead = 0;
-            Stopwatch swTotal = new Stopwatch();
-            swTotal.Start();
-            foreach (string file in files)
+            try
             {
-                // Get handle to file and ensure it is valid
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-                string[] fileParts = Path.GetFileName(file).Split(new char[] { '_' }, 4);
-                ulong accountId;
-                ulong startNonce;
-                ulong numberOfNonces;
-                ulong staggerSize;
-                if (!ulong.TryParse(fileParts[0], out accountId))
+                string[] files = Directory.GetFiles(_directory, "*_*_*_*");
+                byte[] readBuffer = null;
+                List<Scoop> scoops = new List<Scoop>(500);
+                ulong allBytesRead = 0;
+                Stopwatch swTotal = new Stopwatch();
+                swTotal.Start();
+                foreach (string file in files)
                 {
-                    Logger.Error("Unable to parse account ID from " + file);
-                    continue;
-                }
-                if (!ulong.TryParse(fileParts[1], out startNonce))
-                {
-                    Logger.Error("Unable to parse start nonce from " + file);
-                    continue;
-                }
-                if (!ulong.TryParse(fileParts[2], out numberOfNonces))
-                {
-                    Logger.Error("Unable to parse number of nonces from " + file);
-                    continue;
-                }
-                if (!ulong.TryParse(fileParts[3], out staggerSize))
-                {
-                    Logger.Error("Unable to parse stagger size from " + file);
-                    continue;
-                }
-                if (staggerSize != numberOfNonces)
-                {
-                    Logger.Error("Unoptimised file, will not process " + file);
-                    continue;
-                }
-                long expectedSize = (long)(Plot.PLOT_SIZE * numberOfNonces);
-                FileInfo fi = new FileInfo(file);
-                if (fi.Length != expectedSize)
-                {
-                    Logger.Error("Plot file is not expected size, skipping " + file);
-                    continue;
-                }
+                    // Get handle to file and ensure it is valid
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
+                    string[] fileParts = Path.GetFileName(file).Split(new char[] { '_' }, 4);
+                    ulong accountId;
+                    ulong startNonce;
+                    ulong numberOfNonces;
+                    ulong staggerSize;
+                    if (!ulong.TryParse(fileParts[0], out accountId))
+                    {
+                        Logger.Error("Unable to parse account ID from " + file);
+                        continue;
+                    }
+                    if (!ulong.TryParse(fileParts[1], out startNonce))
+                    {
+                        Logger.Error("Unable to parse start nonce from " + file);
+                        continue;
+                    }
+                    if (!ulong.TryParse(fileParts[2], out numberOfNonces))
+                    {
+                        Logger.Error("Unable to parse number of nonces from " + file);
+                        continue;
+                    }
+                    if (!ulong.TryParse(fileParts[3], out staggerSize))
+                    {
+                        Logger.Error("Unable to parse stagger size from " + file);
+                        continue;
+                    }
+                    if (staggerSize != numberOfNonces)
+                    {
+                        Logger.Error("Unoptimised file, will not process " + file);
+                        continue;
+                    }
+                    long expectedSize = (long)(Plot.PLOT_SIZE * numberOfNonces);
+                    FileInfo fi = new FileInfo(file);
+                    if (fi.Length != expectedSize)
+                    {
+                        Logger.Error("Plot file is not expected size, skipping " + file);
+                        continue;
+                    }
 
 #if STUB
                 // If we're on stub nonces then check if this file contains it
@@ -153,60 +155,65 @@ namespace Guytp.BurstSharp.Miner
                     continue;
 #endif
 
-                // Now we have a good plot file let's take our scoop and for each nonce process it
-                uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
-                try
-                {
-                    using (FileStream stream = File.Open(file, FileMode.Open, FileAccess.Read))
+                    // Now we have a good plot file let's take our scoop and for each nonce process it
+                    uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
+                    try
                     {
-                        // Create our reading buffers
-                        uint remainingToRead = desiredBufferSize;
-                        uint bufferSize = desiredBufferSize > Configuration.MemoryLimitPerReader ? Configuration.MemoryLimitPerReader : desiredBufferSize;
-                        if (readBuffer == null || readBuffer.Length < bufferSize)
-                            readBuffer = new byte[bufferSize];
-
-                        // Move to begining for optimized read
-                        long offset = (long)(_scoop * desiredBufferSize);
-                        stream.Seek(offset, SeekOrigin.Begin);
-
-                        // Keep reading in large chunks up to maximum memory permitted and then handover to have deadline calculated elsewhere
-                        ulong currentNonce = startNonce;
-                        while (remainingToRead > 0)
+                        using (FileStream stream = File.Open(file, FileMode.Open, FileAccess.Read))
                         {
-                            uint read = (uint)stream.Read(readBuffer, 0, (int)(remainingToRead > bufferSize ? bufferSize : remainingToRead));
-                            remainingToRead -= read;
-                            scoops.Clear();
-                            for (uint bufferOffset = 0; bufferOffset < read; bufferOffset += Plot.SCOOP_SIZE, currentNonce++)
+                            // Create our reading buffers
+                            uint remainingToRead = desiredBufferSize;
+                            uint bufferSize = desiredBufferSize > Configuration.MemoryLimitPerReader ? Configuration.MemoryLimitPerReader : desiredBufferSize;
+                            if (readBuffer == null || readBuffer.Length < bufferSize)
+                                readBuffer = new byte[bufferSize];
+
+                            // Move to begining for optimized read
+                            long offset = (long)(_scoop * desiredBufferSize);
+                            stream.Seek(offset, SeekOrigin.Begin);
+
+                            // Keep reading in large chunks up to maximum memory permitted and then handover to have deadline calculated elsewhere
+                            ulong currentNonce = startNonce;
+                            while (remainingToRead > 0)
+                            {
+                                uint read = (uint)stream.Read(readBuffer, 0, (int)(remainingToRead > bufferSize ? bufferSize : remainingToRead));
+                                remainingToRead -= read;
+                                scoops.Clear();
+                                for (uint bufferOffset = 0; bufferOffset < read; bufferOffset += Plot.SCOOP_SIZE, currentNonce++)
 #if STUB
                                 if (Configuration.StubNonce == 0 || Configuration.StubNonce == currentNonce)
 #endif
                                     scoops.Add(new Scoop(_miningInfo.BlockHeight, currentNonce, accountId, readBuffer, bufferOffset));
 
-                            // Notify our callers
-                            ScoopsDiscovered?.Invoke(this, new ScoopsDiscoveredEventArgs(scoops));
+                                // Notify our callers
+                                ScoopsDiscovered?.Invoke(this, new ScoopsDiscoveredEventArgs(scoops));
 
-                            // Return if we're done
-                            if (!_isAlive)
-                                break;
+                                // Return if we're done
+                                if (!_isAlive)
+                                    break;
+                            }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error("Error whilst processing " + file, ex);
-                }
-                sw.Stop();
-                double secs = sw.Elapsed.TotalSeconds;
-                double bps = desiredBufferSize / secs;
-                allBytesRead += desiredBufferSize;
-                double mbps = bps / 1024 / 1024;
-                Logger.Info(String.Format("Processed {0} in {1} secs = {2} MBps", file, secs, mbps));
+                    catch (Exception ex)
+                    {
+                        Logger.Error("Error whilst processing " + file, ex);
+                    }
+                    sw.Stop();
+                    double secs = sw.Elapsed.TotalSeconds;
+                    double bps = desiredBufferSize / secs;
+                    allBytesRead += desiredBufferSize;
+                    double mbps = bps / 1024 / 1024;
+                    Logger.Info(String.Format("Processed {0} in {1} secs = {2} MBps", file, secs, mbps));
 
-                // Return if we're done
-                if (!_isAlive)
-                    break;
+                    // Return if we're done
+                    if (!_isAlive)
+                        break;
+                }
+                Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (allBytesRead / swTotal.Elapsed.TotalSeconds) / 1024 / 1024, allBytesRead / 1024 / 1024 / 1024));
             }
-            Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (allBytesRead / swTotal.Elapsed.TotalSeconds) / 1024 / 1024, allBytesRead/1024/1024/1024));
+            catch (Exception ex)
+            {
+                Logger.Error("Failure enumerating \"" + _directory + "\": " + ex.Message);
+            }
             _isAlive = false;
             _miningThread = null;
         }
