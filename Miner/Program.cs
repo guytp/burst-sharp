@@ -8,8 +8,11 @@ namespace Guytp.BurstSharp.Miner
         {
             /* ToDo
              * Miner
-             *      Ability to actually submit to a pool (only best deadline per account)
-             *      Console UI binds Exit F-Key and makes nonce-side of window active and max-widthed to 80px with header
+             *      Console UI
+             *              binds Exit F-Key
+             *              Nonce found info to right pane
+             *              Colours for error levels
+             *      ctrl+c = graceful exit
              *      Loadable config file
              *      Report % completion
              *      Improved logger with different log levels/colours for output
