@@ -3,6 +3,7 @@ using System;
 using System.ComponentModel;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Guytp.BurstSharp.Miner
 {
@@ -105,6 +106,13 @@ namespace Guytp.BurstSharp.Miner
                         MiningInfo = JsonConvert.DeserializeObject<MiningInfo>(stringResponse);
                         _lastJson = stringResponse;
                     }
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex.InnerExceptions.Count == 1 && ex.InnerException is TaskCanceledException)
+                        Logger.Error("Timeout requesting current block status");
+                    else
+                        throw;
                 }
                 catch (Exception ex)
                 {
