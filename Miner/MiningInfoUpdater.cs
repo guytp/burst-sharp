@@ -93,9 +93,9 @@ namespace Guytp.BurstSharp.Miner
                     if (string.IsNullOrEmpty(Configuration.StubJson))
                     {
 #endif
-                        HttpResponseMessage response = _client.GetAsync("/burst?requestType=getMiningInfo").Result;
-                        response.EnsureSuccessStatusCode();
-                        stringResponse = response.Content.ReadAsStringAsync().Result;
+                    HttpResponseMessage response = _client.GetAsync("/burst?requestType=getMiningInfo").Result;
+                    response.EnsureSuccessStatusCode();
+                    stringResponse = response.Content.ReadAsStringAsync().Result;
 #if STUB
                     }
                     else
@@ -111,6 +111,8 @@ namespace Guytp.BurstSharp.Miner
                 {
                     if (ex.InnerExceptions.Count == 1 && ex.InnerException is TaskCanceledException)
                         Logger.Error("Timeout requesting current block status");
+                    else if (ex.InnerException.GetType().Name == "WinHttpException")
+                        Logger.Error("Error reading mining info:" + ex.InnerException.Message);
                     else
                         throw;
                 }

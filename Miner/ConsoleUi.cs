@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Guytp.BurstSharp.Miner
 {
@@ -59,6 +60,16 @@ namespace Guytp.BurstSharp.Miner
         /// Defines an object used to ensure thread saftey.
         /// </summary>
         private readonly object _consoleLocker = new object();
+
+        /// <summary>
+        /// Defines an object used to ensure thread saftey with deadlines.
+        /// </summary>
+        private readonly object _deadlineLocker = new object();
+
+        /// <summary>
+        /// Defines a list of deadlines known by the system.
+        /// </summary>
+        private readonly List<Deadline> _deadlines = new List<Deadline>();
 
         /// <summary>
         /// Defines the labels for each of the function keys.
@@ -149,6 +160,7 @@ namespace Guytp.BurstSharp.Miner
             }
         }
 
+        #region UI Drawing
         /// <summary>
         /// Redraws all sections of the screen.
         /// </summary>
@@ -262,6 +274,9 @@ namespace Guytp.BurstSharp.Miner
                     _textAreaHeight = 0;
                 }
                 RedrawTextArea();
+
+                // And redraw the deadlines
+                RedrawDeadlines();
 
                 // Draw function key areas
                 int functionKeyReservedSpacing = 31; // "FX" for all keys plus 9 spacing bars where FX can be F10 as well as FX and one extra space due to weird bottom right corner.
@@ -378,6 +393,122 @@ namespace Guytp.BurstSharp.Miner
         }
 
         /// <summary>
+        /// Draws details of known deadlines.
+        /// </summary>
+        private void RedrawDeadlines()
+        {
+            // Skip if nothing to fit
+            if (_nonceAreaWidth < 4)
+                return;
+
+            // First lets clone the list for redraw
+            List<ColouredTextLine> deadlineText = new List<ColouredTextLine>();
+            Deadline[] deadlines;
+            lock (_deadlineLocker)
+                deadlines = _deadlines.ToArray();
+            
+            // Define shared header/footers for each deadline
+            string header = "┌";
+            string footer = "└";
+            string blankLine = "  ";
+            for (int i = 0; i < _nonceAreaWidth - 2; i++)
+            {
+                header += "─";
+                footer += "─";
+                blankLine += " ";
+            }
+            header += "┐";
+            footer += "┘";
+
+            // Blank out the box
+            Console.BackgroundColor = ConsoleColor.Blue;
+            for (int i = 0; i < _nonceAreaHeight; i++)
+            {
+                Console.SetCursorPosition(_nonceAreaStartCol, _nonceAreaStartRow + i);
+                Console.Write(blankLine);
+            }
+
+            // Now for each deadline calculate text to display and generate text lines for it
+            foreach (Deadline deadline in deadlines)
+            {
+                ConsoleColor backgroundColour;
+                ConsoleColor foregroundColor = ConsoleColor.White;
+                string deadlineStatus;
+                switch (deadline.Status)
+                {
+                    case DeadlineStatus.Accepted:
+                        deadlineStatus = "Accepted by pool";
+                        backgroundColour = ConsoleColor.Green;
+                        foregroundColor = ConsoleColor.Black;
+                        break;
+                    case DeadlineStatus.Found:
+                        deadlineStatus = "Found new deadline";
+                        backgroundColour = ConsoleColor.DarkYellow;
+                        break;
+                    case DeadlineStatus.Rejected:
+                        deadlineStatus = "Rejected by pool, will not retry";
+                        backgroundColour = ConsoleColor.Red;
+                        break;
+                    case DeadlineStatus.Submitted:
+                        deadlineStatus = "Submitted to pool, awaiting response";
+                        foregroundColor = ConsoleColor.Black;
+                        backgroundColour = ConsoleColor.Yellow;
+                        break;
+                    default:
+                        deadlineStatus = "Submission failed, will retry";
+                        backgroundColour = ConsoleColor.DarkRed;
+                        break;
+                }
+                deadlineText.Add(new ColouredTextLine(header, foregroundColor, backgroundColour));
+                deadlineText.Add(new ColouredTextLine(PrepareDeadlineTextLine("Account:   " + deadline.Scoop.AccountId), foregroundColor, backgroundColour));
+                deadlineText.Add(new ColouredTextLine(PrepareDeadlineTextLine("Block:     " + deadline.MiningInfo.BlockHeight), foregroundColor, backgroundColour));
+                deadlineText.Add(new ColouredTextLine(PrepareDeadlineTextLine("Deadline:  " + deadline.DeadlineDuration), foregroundColor, backgroundColour));
+                deadlineText.Add(new ColouredTextLine(PrepareDeadlineTextLine(deadlineStatus), foregroundColor, backgroundColour));
+                deadlineText.Add(new ColouredTextLine(footer, foregroundColor, backgroundColour));
+                deadlineText.Add(new ColouredTextLine(blankLine, ConsoleColor.Blue, ConsoleColor.Blue));
+            }
+
+            // Now draw this text out to screen but only up to number of rows we can have
+            int startOffset = 0;
+            int printableLines = deadlineText.Count();
+            if (printableLines > _nonceAreaHeight)
+                startOffset = printableLines - _nonceAreaHeight;
+            int outputLine = 0;
+            for (int i = startOffset; i < deadlineText.Count - 1; i++)
+            {
+                Console.SetCursorPosition(_nonceAreaStartCol, _nonceAreaStartRow + outputLine);
+                Console.BackgroundColor = deadlineText[i].BackgroundColour;
+                Console.ForegroundColor = deadlineText[i].ForegroundColour;
+                outputLine++;
+                Console.Write(deadlineText[i].Text);
+            }
+            Console.SetCursorPosition(0, 0);
+        }
+
+        /// <summary>
+        /// Encapsulate a line of text to appear in a "nonce found" box.
+        /// </summary>
+        /// <param name="text">
+        /// The text line.
+        /// </param>
+        /// <returns>
+        /// An appropriately formatted text string.
+        /// </returns>
+        private string PrepareDeadlineTextLine(string text)
+        {
+            string textCut = text;
+            int maximumTextSize = _nonceAreaWidth - 4;
+            if (text.Length > maximumTextSize)
+                textCut = textCut.Substring(0, maximumTextSize);
+            string returnValue = "│ " + textCut;
+            while (returnValue.Length < _nonceAreaWidth - 1)
+                returnValue += " ";
+            return returnValue + "│";
+        }
+        #endregion
+
+        #region Public Display Control
+        /// <summary>
         /// Write a line to the current console UI.
         /// </summary>
         /// <param name="text">
@@ -391,6 +522,30 @@ namespace Guytp.BurstSharp.Miner
                 _applicationInstance.InternalWriteLine(text);
         }
 
+        /// <summary>
+        /// Adds deadline details.
+        /// </summary>
+        /// <param name="deadline">
+        /// The deadline to add.
+        /// </param>
+        public static void AddDeadlineDetails(Deadline deadline)
+        {
+            if (_applicationInstance == null || !_applicationInstance._isAlive)
+                return;
+            lock (_applicationInstance._deadlineLocker)
+            {
+                Deadline matchingDeadline = _applicationInstance._deadlines.FirstOrDefault(d => d.MiningInfo.BlockHeight == deadline.MiningInfo.BlockHeight && d.DeadlineDuration.TotalSeconds == deadline.DeadlineDuration.TotalSeconds);
+                if (matchingDeadline != null)
+                    _applicationInstance._deadlines.Remove(matchingDeadline);
+                _applicationInstance._deadlines.Add(deadline);
+                if (_applicationInstance._deadlines.Count > 50)
+                    _applicationInstance._deadlines.RemoveRange(0, _applicationInstance._deadlines.Count - 50);
+            }
+            _applicationInstance.RedrawDeadlines();
+        }
+        #endregion
+
+        #region Lifecycle Management
         /// <summary>
         /// Run the console UI indefinitely until this object is disposed of.  This method blocks the caller.
         /// </summary>
@@ -451,6 +606,7 @@ namespace Guytp.BurstSharp.Miner
             Console.Clear();
             Logger.Info("UI has terminated");
         }
+        #endregion
 
         #region IDisposable Implementation
         /// <summary>

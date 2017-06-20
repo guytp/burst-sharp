@@ -27,6 +27,11 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the plot checker we use to calculate deadlines.
         /// </summary>
         private PlotChecker _plotChecker;
+
+        /// <summary>
+        /// Defines the deadline submitter we use to manage our queue back to the network.
+        /// </summary>
+        private DeadlineSubmitter _deadlineSubmitter;
         #endregion
 
         #region Constructors
@@ -41,6 +46,9 @@ namespace Guytp.BurstSharp.Miner
             // Create our plot checker and hook up to its events
             _plotChecker = new PlotChecker(Configuration.MemoryLimitPlotChecker / Plot.SCOOP_SIZE, Configuration.ThreadCountPlotChecker);
             _plotChecker.DeadlineFound += PlotCheckerOnDeadlineFound;
+
+            // Setup our deadline submitter
+            _deadlineSubmitter = new DeadlineSubmitter();
 
             // Now create and hook up to these events
             if (Configuration.PlotDirectories != null && Configuration.PlotDirectories.Length > 0)
@@ -81,7 +89,7 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         private void PlotCheckerOnDeadlineFound(object sender, DeadlineFoundEventArgs e)
         {
-            Logger.Info("Deadline discovered of " + TimeSpan.FromSeconds(e.Deadline) + " on block " + e.MiningInfo.BlockHeight + " for account " + e.Scoop.AccountId); ;
+            _deadlineSubmitter.NewDeadline(new Deadline(TimeSpan.FromSeconds(e.Deadline), e.Scoop, e.MiningInfo));
         }
         #endregion
 
@@ -96,6 +104,9 @@ namespace Guytp.BurstSharp.Miner
             // First let's kill any existing plot reading
             foreach (PlotReader reader in _plotReaders)
                 reader.Terminate();
+
+            // Inform deadline submission to scrap old deadlines
+            _deadlineSubmitter.Reset(miningInfo);
 
             // Inform the plot checker of new block
             _plotChecker?.Reset(miningInfo);
