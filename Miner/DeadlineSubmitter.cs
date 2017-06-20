@@ -1,6 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 
 namespace Guytp.BurstSharp.Miner
@@ -30,6 +33,21 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the thread that actually submits deadlines.
         /// </summary>
         private Thread _thread;
+
+        /// <summary>
+        /// Defines the HTTP client we are using.
+        /// </summary>
+        private HttpClient _client;
+
+        /// <summary>
+        /// Defines how much storage space we have for all our plots.
+        /// </summary>
+        private decimal _gbStorage;
+
+        /// <summary>
+        /// Defines the version of our software.
+        /// </summary>
+        private readonly string _version;
         #endregion
 
         #region Constructors
@@ -38,11 +56,29 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public DeadlineSubmitter()
         {
+            // Store our version
+            _version = "burst-sharp " + Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+
+            // Setup a reusable HTTP client
+            _client = new HttpClient();
+            _client.Timeout = TimeSpan.FromSeconds(2);
+            _client.BaseAddress = new Uri(Configuration.PoolApiUrl);
+
+            // Setup our processing thread
             _isAlive = true;
             _thread = new Thread(ThreadEntry) { IsBackground = true, Name = "Deadline Submitter" };
             _thread.Start();
         }
         #endregion
+
+        /// <summary>
+        /// Updates how much storage has been used for all our plots so that the pools can be informed.
+        /// </summary>
+        /// <param name="gb"></param>
+        public void UpdateUtilisedStorage(decimal gb)
+        {
+            _gbStorage = gb;
+        }
 
         /// <summary>
         /// This method provides the main logic that manages state transitions and deals with our queue.
@@ -65,9 +101,45 @@ namespace Guytp.BurstSharp.Miner
                     deadlines = _deadlineQueue.Where(dl => dl.NextSubmissionDate <= DateTime.UtcNow).ToArray();
                 }
 
-                // Now for each deadline let's submit it to the network
-                // TODO: Submit to network
-                // TODO: Update console UI
+                foreach (Deadline deadline in deadlines)
+                {
+                    try
+                    {
+                        _client.DefaultRequestHeaders.Clear();
+                        _client.DefaultRequestHeaders.Add("X-Miner", _version);
+                        _client.DefaultRequestHeaders.Add("X-Capacity", _gbStorage.ToString());
+                        deadline.Submit();
+                        ConsoleUi.DisplayDeadline(deadline);
+                        HttpResponseMessage response = _client.PostAsync("/burst?requestType=submitNonce&nonce=" + deadline.Scoop.Nonce + "&accountId=" + deadline.Scoop.AccountId, null).Result;
+                        response.EnsureSuccessStatusCode();
+                        string stringResponse = response.Content.ReadAsStringAsync().Result;
+                        JObject obj = JObject.Parse(stringResponse);
+                        JToken tok;
+                        if (obj.TryGetValue("deadline", out tok))
+                        {
+                            // We have deadline so it was accepted
+                            deadline.Accept();
+                            ConsoleUi.DisplayDeadline(deadline);
+                        }
+                        else if (obj.TryGetValue("errorCode", out tok))
+                        {
+                            // An error and it was rejected
+                            deadline.Reject();
+                            ConsoleUi.DisplayDeadline(deadline);
+                        }
+                        else
+                        {
+                            // Some other state so we want to retry
+                            deadline.SubmissionFailed();
+                            ConsoleUi.DisplayDeadline(deadline);
+                        }
+                    }
+                    catch
+                    {
+                        deadline.SubmissionFailed();
+                        ConsoleUi.DisplayDeadline(deadline);
+                    }
+                }
 
                 // Wait to retry
                 Thread.Sleep(100);
@@ -97,7 +169,7 @@ namespace Guytp.BurstSharp.Miner
         {
             // Let's log this and notify the UI
             Logger.Info("New deadline found " + deadline.DeadlineDuration + " for block " + deadline.MiningInfo.BlockHeight);
-            ConsoleUi.AddDeadlineDetails(deadline);
+            ConsoleUi.DisplayDeadline(deadline);
 
             // Add this to our queue
             lock (_deadlineQueueLocker)

@@ -109,7 +109,7 @@ namespace Guytp.BurstSharp.Miner
             _deadlineSubmitter.Reset(miningInfo);
 
             // Inform the plot checker of new block
-            _plotChecker?.Reset(miningInfo);
+            _plotChecker.Reset(miningInfo);
 
             // If no mining information stop now
             if (miningInfo == null)
@@ -140,6 +140,11 @@ namespace Guytp.BurstSharp.Miner
             foreach (PlotReader reader in _plotReaders)
                 reader.StartMining(miningInfo, scoop);
 
+            // Finally lets update storage details
+            decimal utilisedStorage = 0;
+            foreach (PlotReader reader in _plotReaders)
+                utilisedStorage += reader.UtilisedStorage;
+            _deadlineSubmitter.UpdateUtilisedStorage(utilisedStorage);
         }
 
         #region IDisposable Implementation

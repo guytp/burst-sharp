@@ -528,7 +528,7 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="deadline">
         /// The deadline to add.
         /// </param>
-        public static void AddDeadlineDetails(Deadline deadline)
+        public static void DisplayDeadline(Deadline deadline)
         {
             if (_applicationInstance == null || !_applicationInstance._isAlive)
                 return;
@@ -604,6 +604,7 @@ namespace Guytp.BurstSharp.Miner
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.BackgroundColor = ConsoleColor.Black;
             Console.Clear();
+            Console.TreatControlCAsInput = false;
             Logger.Info("UI has terminated");
         }
         #endregion

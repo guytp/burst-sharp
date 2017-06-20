@@ -39,6 +39,57 @@ namespace Guytp.BurstSharp.Miner
         private ulong _scoop;
         #endregion
 
+        #region Properties
+        public decimal UtilisedStorage
+        {
+            get
+            {
+                decimal value = 0;
+                try
+                {
+                    string[] files = Directory.GetFiles(_directory, "*_*_*_*");
+                    foreach (string file in files)
+                    {
+                        try
+                        {
+                            // Get handle to file and ensure it is valid
+                            Stopwatch sw = new Stopwatch();
+                            sw.Start();
+                            string[] fileParts = Path.GetFileName(file).Split(new char[] { '_' }, 4);
+                            ulong accountId;
+                            ulong startNonce;
+                            ulong numberOfNonces;
+                            ulong staggerSize;
+                            if (!ulong.TryParse(fileParts[0], out accountId))
+                                continue;
+                            if (!ulong.TryParse(fileParts[1], out startNonce))
+                                continue;
+                            if (!ulong.TryParse(fileParts[2], out numberOfNonces))
+                                continue;
+                            if (!ulong.TryParse(fileParts[3], out staggerSize))
+                                continue;
+                            if (staggerSize != numberOfNonces)
+                                continue;
+                            long expectedSize = (long)(Plot.PLOT_SIZE * numberOfNonces);
+                            FileInfo fi = new FileInfo(file);
+                            if (fi.Length != expectedSize)
+                                continue;
+                            value += expectedSize / 1073741824m;
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                    }
+                }
+                catch
+                {
+                }
+                return value;
+            }
+        }
+        #endregion
+
         #region Events
         /// <summary>
         /// Fired whenever new scoops are discovered.
@@ -220,7 +271,7 @@ namespace Guytp.BurstSharp.Miner
         }
 
 
-#region IDisposable Implementation
+        #region IDisposable Implementation
         /// <summary>
         /// Free up our resources.
         /// </summary>
@@ -228,8 +279,7 @@ namespace Guytp.BurstSharp.Miner
         {
             Terminate();
         }
-#endregion
+        #endregion
     }
 }
- 
- 
+
