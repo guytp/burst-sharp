@@ -6,5 +6,9 @@
   "PoolApiUrl": "http://pool.burstcoin.sk",
   "ThreadCountPlotChecker": 4,
   "MemoryLimitPerReader": 500,
-  "MemoryLimitPlotChecker":  500
+  "MemoryLimitPlotChecker": 500,
+  "LogInfo": true,
+  "LogWarn": true,
+  "LogError": true,
+  "LogDebug":  true
 }

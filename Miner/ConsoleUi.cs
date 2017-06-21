@@ -54,7 +54,7 @@ namespace Guytp.BurstSharp.Miner
         /// <summary>
         /// Defines a list of all text we are displaying in the information area.
         /// </summary>
-        private readonly List<string> _text = new List<string>();
+        private readonly List<ColouredTextLine> _text = new List<ColouredTextLine>();
 
         /// <summary>
         /// Defines an object used to ensure thread saftey.
@@ -331,7 +331,7 @@ namespace Guytp.BurstSharp.Miner
             {
                 Console.BackgroundColor = ConsoleColor.Blue;
                 Console.ForegroundColor = ConsoleColor.White;
-                string[] lines;
+                ColouredTextLine[] lines;
                 lock (_consoleLocker)
                 {
                     lines = _text.ToArray();
@@ -340,9 +340,12 @@ namespace Guytp.BurstSharp.Miner
                 {
                     if (i >= _textAreaHeight)
                         break;
-                    string text = lines[i];
+                    ColouredTextLine colouredText = lines[i];
+                    string text = colouredText.Text;
                     if (text.Length > _textAreaWidth)
                         text = text.Substring(0, _textAreaWidth);
+                    Console.ForegroundColor = colouredText.ForegroundColour;
+                    Console.BackgroundColor = colouredText.BackgroundColour;
                     Console.SetCursorPosition(_textAreaStartCol, _textAreaStartRow + i);
                     while (text.Length < _textAreaWidth)
                         text += " ";
@@ -362,7 +365,7 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="text">
         /// The text to draw.
         /// </param>
-        private void InternalWriteLine(string text)
+        private void InternalWriteLine(ColouredTextLine text)
         {
             if (_textAreaWidth < 1)
                 return;
@@ -370,14 +373,14 @@ namespace Guytp.BurstSharp.Miner
             {
                 lock (_consoleLocker)
                 {
-                    string[] lines = text.Replace("\r", string.Empty).Split(new char[] { '\n' });
+                    string[] lines = text.Text.Replace("\r", string.Empty).Split(new char[] { '\n' });
                     foreach (string line in lines)
                     {
                         int offset = 0;
                         while (offset < line.Length)
                         {
                             int toAdd = line.Length - offset < _textAreaWidth ? line.Length - offset : _textAreaWidth;
-                            _text.Add(line.Substring(offset, toAdd));
+                            _text.Add(new ColouredTextLine(line.Substring(offset, toAdd), text.ForegroundColour, text.BackgroundColour));
                             offset += toAdd;
                         }
                     }
@@ -514,12 +517,22 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="text">
         /// The text to draw.
         /// </param>
-        public static void WriteLine(string text)
+        /// <param name="foreground">
+        /// The optional foreground colour of the text.
+        /// </param>
+        /// <param name="background">
+        /// The optional background colour of the text.
+        /// </param>
+        public static void WriteLine(string text, ConsoleColor foreground = ConsoleColor.White, ConsoleColor background = ConsoleColor.Blue)
         {
             if (_applicationInstance == null || !_applicationInstance._isAlive)
+            {
+                Console.ForegroundColor = foreground;
+                Console.BackgroundColor = background;
                 Console.WriteLine(text);
+            }
             else
-                _applicationInstance.InternalWriteLine(text);
+                _applicationInstance.InternalWriteLine(new ColouredTextLine(text, foreground, background));
         }
 
         /// <summary>
@@ -605,7 +618,7 @@ namespace Guytp.BurstSharp.Miner
             Console.BackgroundColor = ConsoleColor.Black;
             Console.Clear();
             Console.TreatControlCAsInput = false;
-            Logger.Info("UI has terminated");
+            Logger.Debug("UI has terminated");
         }
         #endregion
 

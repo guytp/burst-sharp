@@ -32,6 +32,11 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the deadline submitter we use to manage our queue back to the network.
         /// </summary>
         private DeadlineSubmitter _deadlineSubmitter;
+
+        /// <summary>
+        /// Defines how many GB of total storage is used across all plot readers.
+        /// </summary>
+        private decimal _utilisedStorage;
         #endregion
 
         #region Constructors
@@ -58,6 +63,7 @@ namespace Guytp.BurstSharp.Miner
                 {
                     _plotReaders[i] = new PlotReader(Configuration.PlotDirectories[i]);
                     _plotReaders[i].ScoopsDiscovered += PlotReaderOnScoopsDiscovered;
+                    _utilisedStorage += _plotReaders[i].UtilisedStorage;
                 }
             }
         }
@@ -134,7 +140,7 @@ namespace Guytp.BurstSharp.Miner
             Array.Copy(miningInfo.BlockHeightBytes, 0, gensigHashable, 32, 8);
             byte[] gensig = _shabel.ComputeBytes(gensigHashable).GetBytes();
             uint scoop = (uint)((gensig[gensig.Length - 2] & 0x0F) << 8) | (gensig[gensig.Length - 1]);
-            Logger.Info("Calculated scoop for block as " + scoop);
+            Logger.Debug("Calculated scoop for block as " + scoop);
 
             // With the config that we have we can now execute all of our readers
             foreach (PlotReader reader in _plotReaders)
@@ -144,6 +150,7 @@ namespace Guytp.BurstSharp.Miner
             decimal utilisedStorage = 0;
             foreach (PlotReader reader in _plotReaders)
                 utilisedStorage += reader.UtilisedStorage;
+            _utilisedStorage = utilisedStorage;
             _deadlineSubmitter.UpdateUtilisedStorage(utilisedStorage);
         }
 

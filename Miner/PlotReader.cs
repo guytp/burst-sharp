@@ -254,7 +254,7 @@ namespace Guytp.BurstSharp.Miner
                     double bps = desiredBufferSize / secs;
                     allBytesRead += desiredBufferSize;
                     double mbps = bps / 1024 / 1024;
-                    Logger.Info(String.Format("Processed {0} in {1} secs = {2} MBps", file, secs, mbps));
+                    Logger.Debug(String.Format("Processed {0} in {1} secs = {2} MBps", file, secs, mbps));
 
                     // Return if we're done
                     if (!_isAlive)

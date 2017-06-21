@@ -8,10 +8,10 @@ namespace Guytp.BurstSharp.Miner
         static void Main(string[] args)
         {
             /* Miner
-             *      Colours for error levels
-             *      Improved logger (different levels, optional to file)
              *      Report % completion (and make all the scrolling per-file optional)
              *      Issues with per-line printing causing UI to warp
+             *      Package as pre-built binary for each platform
+             *      Improved logger (pick up Guytp.Logging)
              *      Other stagger sizes
              *      Solo mining
              *      More granular CPU/memory configuration

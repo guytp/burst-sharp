@@ -152,7 +152,7 @@ namespace Guytp.BurstSharp.Miner
                                 {
                                 }
                             if (!string.IsNullOrEmpty(stringResponse))
-                                Logger.Info(stringResponse);
+                                Logger.Debug(stringResponse);
                         }
                     }
                 }
@@ -201,7 +201,7 @@ namespace Guytp.BurstSharp.Miner
             _isAlive = false;
             if (_thread != null)
             {
-                Logger.Info("Stopping deadline submitter");
+                Logger.Debug("Stopping deadline submitter");
                 _thread?.Join();
                 _thread = null;
             }

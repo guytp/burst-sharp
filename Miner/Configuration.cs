@@ -41,6 +41,26 @@ namespace Guytp.BurstSharp.Miner
         /// Gets how many CPU cores can be assigned to the plot checker.
         /// </summary>
         public static uint ThreadCountPlotChecker { get; private set; }
+
+        /// <summary>
+        /// Gets whether or not info messages should be logged.
+        /// </summary>
+        public static bool LogInfo { get; private set; }
+
+        /// <summary>
+        /// Gets whether or not error messages should be logged.
+        /// </summary>
+        public static bool LogError { get; private set; }
+
+        /// <summary>
+        /// Gets whether or not debug messages should be logged.
+        /// </summary>
+        public static bool LogDebug { get; private set; }
+
+        /// <summary>
+        /// Gets whether or not warning messages should be logged.
+        /// </summary>
+        public static bool LogWarn { get; private set; }
         #endregion
 
         #region Constructors
@@ -58,6 +78,10 @@ namespace Guytp.BurstSharp.Miner
                 MemoryLimitPerReader = obj.GetValue("MemoryLimitPerReader").ToObject<uint>() * 1024 * 1024;
                 MemoryLimitPlotChecker = obj.GetValue("MemoryLimitPlotChecker").ToObject<uint>() * 1024 * 1024;
                 ThreadCountPlotChecker = obj.GetValue("ThreadCountPlotChecker").ToObject<uint>();
+                LogInfo = obj.GetValue("LogInfo").ToObject<bool>();
+                LogError = obj.GetValue("LogError").ToObject<bool>();
+                LogDebug = obj.GetValue("LogDebug").ToObject<bool>();
+                LogWarn = obj.GetValue("LogWarn").ToObject<bool>();
             }
             catch (Exception ex)
             {

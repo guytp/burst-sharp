@@ -89,7 +89,7 @@ namespace Guytp.BurstSharp.Miner
             }
             if (_consoleUi != null)
                 _consoleUi.Dispose();
-            Logger.Info("Miner disposed");
+            Logger.Debug("Miner disposed");
         }
         #endregion
     }

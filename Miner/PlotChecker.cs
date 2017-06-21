@@ -190,7 +190,7 @@ namespace Guytp.BurstSharp.Miner
         public void Dispose()
         {
             // Set values that should free up anything wanting to queue
-            Logger.Info("Stopping PlotChecker");
+            Logger.Debug("Stopping PlotChecker");
             _maximumScoops = uint.MaxValue;
             _miningInfo = null;
 
@@ -202,7 +202,7 @@ namespace Guytp.BurstSharp.Miner
                     thread.Join();
                 _threads = null;
             }
-            Logger.Info("PlotChecker threads all terminated");
+            Logger.Debug("PlotChecker threads all terminated");
         }
         #endregion
     }
