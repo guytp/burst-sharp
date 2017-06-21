@@ -7,23 +7,12 @@ namespace Guytp.BurstSharp.Miner
     {
         static void Main(string[] args)
         {
-            /* Miner
+            /* ToDo
              *      Report % completion (and make all the scrolling per-file optional)
              *      Issues with per-line printing causing UI to warp
-             *      Package as pre-built binary for each platform
-             *      Improved logger (pick up Guytp.Logging)
              *      Other stagger sizes
              *      Solo mining
-             *      More granular CPU/memory configuration
-             * Data Integrity
-             *      Duplicate nonce detector
-             *      Optimization
-             *      Where to start nonces from on drives
-             *      Fill up free space
-             * Plotter
-             *      Suggest next nonce based on existing on disk
-             *      "Fill Disk" option to chose number of plots
-             * GUIs
+             *      Package as pre-built binary for each platform
              */
             try
             {
