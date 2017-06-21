@@ -61,7 +61,7 @@ namespace Guytp.BurstSharp.Miner
 
             // Setup a reusable HTTP client
             _client = new HttpClient();
-            _client.Timeout = TimeSpan.FromSeconds(2);
+            _client.Timeout = TimeSpan.FromSeconds(20);
             _client.BaseAddress = new Uri(Configuration.PoolApiUrl);
 
             // Setup our processing thread
@@ -103,6 +103,8 @@ namespace Guytp.BurstSharp.Miner
 
                 foreach (Deadline deadline in deadlines)
                 {
+                    HttpResponseMessage response = null;
+                    string stringResponse = null;
                     try
                     {
                         _client.DefaultRequestHeaders.Clear();
@@ -110,9 +112,9 @@ namespace Guytp.BurstSharp.Miner
                         _client.DefaultRequestHeaders.Add("X-Capacity", _gbStorage.ToString());
                         deadline.Submit();
                         ConsoleUi.DisplayDeadline(deadline);
-                        HttpResponseMessage response = _client.PostAsync("/burst?requestType=submitNonce&nonce=" + deadline.Scoop.Nonce + "&accountId=" + deadline.Scoop.AccountId, null).Result;
+                        response = _client.PostAsync("/burst?requestType=submitNonce&nonce=" + deadline.Scoop.Nonce + "&accountId=" + deadline.Scoop.AccountId, null).Result;
                         response.EnsureSuccessStatusCode();
-                        string stringResponse = response.Content.ReadAsStringAsync().Result;
+                        stringResponse = response.Content.ReadAsStringAsync().Result;
                         JObject obj = JObject.Parse(stringResponse);
                         JToken tok;
                         if (obj.TryGetValue("deadline", out tok))
@@ -139,6 +141,19 @@ namespace Guytp.BurstSharp.Miner
                         deadline.SubmissionFailed();
                         ConsoleUi.DisplayDeadline(deadline);
                         Logger.Error("Failed to submit deadline", ex);
+                        if (response != null)
+                        {
+                            if (!string.IsNullOrEmpty(stringResponse))
+                                try
+                                {
+                                    stringResponse = response.Content.ReadAsStringAsync().Result;
+                                }
+                                catch
+                                {
+                                }
+                            if (!string.IsNullOrEmpty(stringResponse))
+                                Logger.Info(stringResponse);
+                        }
                     }
                 }
 
