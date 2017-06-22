@@ -279,7 +279,7 @@ namespace Guytp.BurstSharp.Miner
                         break;
                 }
                 Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (BytesRead / 1000 / 1000 / swTotal.Elapsed.TotalSeconds), (decimal)BytesRead / 1000m / 1000m / 1000m));
-                UtilisedStorage = utilisedStorage;
+                UtilisedStorage = utilisedStorage / 1000000000m;
             }
             catch (Exception ex)
             {

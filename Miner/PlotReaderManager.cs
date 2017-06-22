@@ -23,11 +23,6 @@ namespace Guytp.BurstSharp.Miner
         private Shabal256 _shabel;
 
         /// <summary>
-        /// Defines how many GB of total storage is used across all plot readers.
-        /// </summary>
-        private decimal _utilisedStorage;
-
-        /// <summary>
         /// Defines a thread that monitors the progress of a round and updates the UI accordingly.
         /// </summary>
         private Thread _progressMonitoringThread;
@@ -48,11 +43,23 @@ namespace Guytp.BurstSharp.Miner
         private bool _isAlive;
         #endregion
 
+        #region Properties
+        /// <summary>
+        /// Gets how many GB of total storage is used across all plot readers.
+        /// </summary>
+        public decimal UtilisedStorage { get; private set; }
+        #endregion
+
         #region Events
         /// <summary>
         /// Fired whenever new scoops are discovered.
         /// </summary>
         public event EventHandler<ScoopsDiscoveredEventArgs> ScoopsDiscovered;
+
+        /// <summary>
+        /// Fired when the amount of storage is updated.
+        /// </summary>
+        public event EventHandler<UtilisedStorageEventHandler> UtilisedStorageUpdated;
         #endregion
 
         #region Constructors
@@ -69,13 +76,16 @@ namespace Guytp.BurstSharp.Miner
             if (Configuration.PlotDirectories != null && Configuration.PlotDirectories.Length > 0)
             {
                 _plotReaders = new PlotReader[Configuration.PlotDirectories.Length];
+                decimal utilisedStorage = 0;
                 Parallel.For(0, Configuration.PlotDirectories.Length, (int i) =>
                 {
                     _plotReaders[i] = new PlotReader(Configuration.PlotDirectories[i]);
                     _plotReaders[i].ScoopsDiscovered += PlotReaderOnScoopsDiscovered;
                     _plotReaders[i].UpdateUtilisedStorage();
-                    _utilisedStorage += _plotReaders[i].UtilisedStorage;
+                    utilisedStorage += _plotReaders[i].UtilisedStorage;
                 });
+                UtilisedStorage = utilisedStorage;
+                UtilisedStorageUpdated?.Invoke(this, new UtilisedStorageEventHandler(UtilisedStorage));
             }
             Logger.Debug("Finished initialising plot readers");
 
@@ -141,7 +151,7 @@ namespace Guytp.BurstSharp.Miner
                 // Determine how far through our readers are of this block (if we're in a block)
                 decimal value = 0m;
                 string text = null;
-                ulong totalScoops = (ulong)(_utilisedStorage * 1000000000 / Plot.SCOOPS_PER_PLOT / Plot.SCOOP_SIZE);
+                ulong totalScoops = (ulong)(UtilisedStorage * 1000000000 / Plot.SCOOPS_PER_PLOT / Plot.SCOOP_SIZE);
                 ulong readScoops = 0;
                 ulong totalBytesRead = 0;
                 foreach (PlotReader reader in _plotReaders)
@@ -169,15 +179,18 @@ namespace Guytp.BurstSharp.Miner
                     {
                         ulong remainingScoops = totalScoops - readScoops;
                         double remainingSeconds = (double)remainingScoops / scoopsPerSecond;
-                        TimeSpan remaining = TimeSpan.FromSeconds(remainingSeconds);
-                        string remainingText = remaining.Minutes.ToString();
-                        if (remainingText.Length < 2)
-                            remainingText = "0" + remainingText;
-                        remainingText += ":";
-                        if (remaining.Seconds < 10)
-                            remainingText += "0";
-                        remainingText += remaining.Seconds.ToString();
-                        text += "   ETA: " + remainingText;
+                        if (remainingSeconds < 86400)
+                        {
+                            TimeSpan remaining = TimeSpan.FromSeconds(remainingSeconds);
+                            string remainingText = remaining.Minutes.ToString();
+                            if (remainingText.Length < 2)
+                                remainingText = "0" + remainingText;
+                            remainingText += ":";
+                            if (remaining.Seconds < 10)
+                                remainingText += "0";
+                            remainingText += remaining.Seconds.ToString();
+                            text += "   ETA: " + remainingText;
+                        }
                     }
                 }
                 else if (seconds > 0)
@@ -233,6 +246,16 @@ namespace Guytp.BurstSharp.Miner
             byte[] gensig = _shabel.ComputeBytes(gensigHashable).GetBytes();
             uint scoop = (uint)((gensig[gensig.Length - 2] & 0x0F) << 8) | (gensig[gensig.Length - 1]);
             Logger.Debug("Calculated scoop for block as " + scoop);
+
+            // Update our capacity values
+            decimal utilisedStorage = 0;
+            foreach (PlotReader reader in _plotReaders)
+                utilisedStorage += reader.UtilisedStorage;
+            if (UtilisedStorage != utilisedStorage)
+            {
+                UtilisedStorage = utilisedStorage;
+                UtilisedStorageUpdated?.Invoke(this, new UtilisedStorageEventHandler(utilisedStorage));
+            }
 
             // With the config that we have we can now execute all of our readers
             foreach (PlotReader reader in _plotReaders)

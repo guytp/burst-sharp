@@ -92,6 +92,20 @@ namespace Guytp.BurstSharp.Miner
         {
             _deadlineSubmitter.NewDeadline(new Deadline(TimeSpan.FromSeconds(e.Deadline), e.Scoop, e.MiningInfo));
         }
+
+        /// <summary>
+        /// Handle the known size of plots being updated.
+        /// </summary>
+        /// <param name="sender">
+        /// The event sender.
+        /// </param>
+        /// <param name="e">
+        /// The event arguments.
+        /// </param>
+        private void PlotReaderManagerOnUtilisedStorageUpdated(object sender, UtilisedStorageEventHandler e)
+        {
+            _deadlineSubmitter.UpdateUtilisedStorage(e.Gigabytes);
+        }
         #endregion
 
         /// <summary>
@@ -112,6 +126,7 @@ namespace Guytp.BurstSharp.Miner
             Logger.Debug("Plot reader manager: starting");
             _plotReaderManager = new PlotReaderManager();
             _plotReaderManager.ScoopsDiscovered += PlotReaderManagerOnScoopsDiscovered;
+            _plotReaderManager.UtilisedStorageUpdated += PlotReaderManagerOnUtilisedStorageUpdated;
             Logger.Debug("Plot reader manager: started");
             
             // Create our deadline calculator and hook up to its events
@@ -123,6 +138,7 @@ namespace Guytp.BurstSharp.Miner
             // Setup our deadline submitter
             Logger.Debug("Deadline submitter: starting");
             _deadlineSubmitter = new DeadlineSubmitter();
+            _deadlineSubmitter.UpdateUtilisedStorage(_plotReaderManager.UtilisedStorage);
             Logger.Debug("Deadline submitter: started");
 
             // Create our mining info updater to listen for new rounds

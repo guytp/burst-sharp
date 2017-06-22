@@ -74,7 +74,9 @@ namespace Guytp.BurstSharp.Miner
         /// <summary>
         /// Updates how much storage has been used for all our plots so that the pools can be informed.
         /// </summary>
-        /// <param name="gb"></param>
+        /// <param name="gb">
+        /// The amount of storage used for all of our plots.
+        /// </param>
         public void UpdateUtilisedStorage(decimal gb)
         {
             _gbStorage = gb;
