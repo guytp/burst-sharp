@@ -50,6 +50,7 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         private void OnMiningInfoUpdate(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
+            ConsoleUi.SetTextAreaHeader(_miningInfoUpdater?.MiningInfo != null ? "Block " + _miningInfoUpdater.MiningInfo.BlockHeight : null);
             _plotReaderManager.ReadPlots(_miningInfoUpdater.MiningInfo);
         }
         #endregion

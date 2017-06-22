@@ -12,31 +12,7 @@ namespace Guytp.BurstSharp.Miner
     public class ConsoleUi : IDisposable
     {
         #region Declarations
-        /// <summary>
-        /// Defines whether the whole screen needs a redraw due to a rendering issue.
-        /// </summary>
-        private bool _redrawRequired;
-
-        /// <summary>
-        /// Defines a flag that can be used to signify redrawing of main text is needed.
-        /// </summary>
-        private bool _redrawTextRequired;
-
-        /// <summary>
-        /// Defines a flag that can be used to signify redrawing of deadlines is needed.
-        /// </summary>
-        private bool _redrawDeadlinesRequired;
-
-        /// <summary>
-        /// Defines a flag that can be used to signify redrawing of the progress bar is needed.
-        /// </summary>
-        private bool _redrawProgressBarRequired;
-
-        /// <summary>
-        /// Defines an object to ensure thread saftey when modifying redraw requirements.
-        /// </summary>
-        private readonly object _redrawLocker = new object();
-
+        #region Constants
         /// <summary>
         /// Defines the width of the logo, excluding borders.
         /// </summary>
@@ -51,6 +27,7 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the maximum width of the nonce section.
         /// </summary>
         private const int MaximumNonceSectionWidth = 80;
+        #endregion
 
         /// <summary>
         /// Defines the current application wide instance.
@@ -77,6 +54,39 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         private int _windowWidth;
 
+        #region Redraw Flags
+        /// <summary>
+        /// Defines whether the whole screen needs a redraw due to a rendering issue.
+        /// </summary>
+        private bool _redrawRequired;
+
+        /// <summary>
+        /// Defines a flag that can be used to signify redrawing of main text is needed.
+        /// </summary>
+        private bool _redrawTextRequired;
+
+        /// <summary>
+        /// Defines a flag that can be used to signify redrawing of deadlines is needed.
+        /// </summary>
+        private bool _redrawDeadlinesRequired;
+
+        /// <summary>
+        /// Defines a flag that can be used to signify redrawing of the progress bar is needed.
+        /// </summary>
+        private bool _redrawProgressBarRequired;
+
+        /// <summary>
+        /// Defines an object to ensure thread saftey when modifying redraw requirements.
+        /// </summary>
+        private readonly object _redrawLocker = new object();
+        #endregion
+
+        #region Text Rendering
+        /// <summary>
+        /// Defines the text to display in the header of the main log area.
+        /// </summary>
+        private string _textAreaHeader;
+
         /// <summary>
         /// Defines a list of all text we are displaying in the information area.
         /// </summary>
@@ -88,6 +98,28 @@ namespace Guytp.BurstSharp.Miner
         private readonly object _textLocker = new object();
 
         /// <summary>
+        /// Defines how many columns wide the text area is, excluding margins.
+        /// </summary>
+        private int _textAreaWidth;
+
+        /// <summary>
+        /// Defines how many rows high the text area is, excluding margins.
+        /// </summary>
+        private int _textAreaHeight;
+
+        /// <summary>
+        /// Defines which row the text area starts on.
+        /// </summary>
+        private int _textAreaStartRow;
+
+        /// <summary>
+        /// Defines which column the text area start on.
+        /// </summary>
+        private int _textAreaStartCol;
+        #endregion
+
+        #region Deadline Rendering
+        /// <summary>
         /// Defines an object used to ensure thread saftey with deadlines.
         /// </summary>
         private readonly object _deadlineLocker = new object();
@@ -97,6 +129,28 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         private readonly List<Deadline> _deadlines = new List<Deadline>();
 
+        /// <summary>
+        /// Defines the width of the deadline area, excluding margins.
+        /// </summary>
+        private int _deadlineAreaWidth;
+
+        /// <summary>
+        /// Defines the height of the deadline area, excluding margins.
+        /// </summary>
+        private int _deadlineAreaHeight;
+
+        /// <summary>
+        /// Defines which row the deadline area start on.
+        /// </summary>
+        private int _deadlineAreaStartRow;
+
+        /// <summary>
+        /// Defines which column the deadline area start on.
+        /// </summary>
+        private int _deadlineAreaStartCol;
+        #endregion
+
+        #region Function Keys
         /// <summary>
         /// Defines the labels for each of the function keys.
         /// </summary>
@@ -111,7 +165,9 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the key press that ends the console UI loop.
         /// </summary>
         private readonly Action _exitAction;
+        #endregion
 
+        #region Progress Bar
         /// <summary>
         /// Defines whether or not the progress bar is currently visible.
         /// </summary>
@@ -136,46 +192,7 @@ namespace Guytp.BurstSharp.Miner
         /// Defines an object to use for thread saftey.
         /// </summary>
         private readonly object _progressBarLocker = new object();
-
-        /// <summary>
-        /// Defines how many columns wide the text area is, excluding margins.
-        /// </summary>
-        private int _textAreaWidth;
-
-        /// <summary>
-        /// Defines how many rows high the text area is, excluding margins.
-        /// </summary>
-        private int _textAreaHeight;
-
-        /// <summary>
-        /// Defines which row the text area starts on.
-        /// </summary>
-        private int _textAreaStartRow;
-
-        /// <summary>
-        /// Defines which column the text area start on.
-        /// </summary>
-        private int _textAreaStartCol;
-
-        /// <summary>
-        /// Defines the width of the deadline area, excluding margins.
-        /// </summary>
-        private int _deadlineAreaWidth;
-
-        /// <summary>
-        /// Defines the height of the deadline area, excluding margins.
-        /// </summary>
-        private int _deadlineAreaHeight;
-
-        /// <summary>
-        /// Defines which row the deadline area start on.
-        /// </summary>
-        private int _deadlineAreaStartRow;
-
-        /// <summary>
-        /// Defines which column the deadline area start on.
-        /// </summary>
-        private int _deadlineAreaStartCol;
+        #endregion
         #endregion
 
         #region Constructors
@@ -364,6 +381,15 @@ namespace Guytp.BurstSharp.Miner
                 Console.Write("   Written by guytp - development donations are always welcome.");
                 Console.SetCursorPosition(logoColumn, 9);
                 Console.Write("[1HmJjK9nNvEstQNLBfxJyvTfkgGBCmngHZ]  [BURST-DXGM-62RW-X8G6-A493G]");
+
+                // Add text area header if defined
+                if (_textAreaHeader != null)
+                {
+                    int availableWidth = mainContentRightBorderColumn - 2;
+                    string textToWrite = _textAreaHeader.Length + 2 > availableWidth ? " " + _textAreaHeader.Substring(0, availableWidth - 2) + " " : " " + _textAreaHeader + " ";
+                    Console.SetCursorPosition((availableWidth / 2) - (textToWrite.Length / 2), LogoHeight + 1);
+                    Console.Write(textToWrite);
+                }
 
                 // Add nonce header
                 string nonceHeaderText = " Found Nonces ";
@@ -726,6 +752,23 @@ namespace Guytp.BurstSharp.Miner
                 }
                 lock (_applicationInstance._redrawLocker)
                     _applicationInstance._redrawTextRequired = true;
+            }
+        }
+
+        /// <summary>
+        /// Sets the header to display within the main text area on the border bars.
+        /// </summary>
+        /// <param name="text">
+        /// The text to display.
+        /// </param>
+        public static void SetTextAreaHeader(string text)
+        {
+            if (_applicationInstance == null)
+                return;
+            lock (_applicationInstance._redrawLocker)
+            {
+                _applicationInstance._textAreaHeader = !string.IsNullOrWhiteSpace(text) ? text : null;
+                _applicationInstance._redrawRequired = true;
             }
         }
 

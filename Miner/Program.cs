@@ -18,6 +18,7 @@ namespace Guytp.BurstSharp.Miner
         {
             /* ToDo
              *      Block height shown in header
+             *      Duration/ETA on progress bar
              *      Other stagger sizes
              *      Solo mining
              *      Package as pre-built binary for each platform
