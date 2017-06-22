@@ -3,13 +3,24 @@
 
 namespace Guytp.BurstSharp.Miner
 {
-    class Program
+    /// <summary>
+    /// This class contains the main entry point to the application.
+    /// </summary>
+    public class Program
     {
-        static void Main(string[] args)
+        /// <summary>
+        /// The main entry point to the application.
+        /// </summary>
+        /// <param name="args">
+        /// Any command line arguments.
+        /// </param>
+        public static void Main(string[] args)
         {
             /* ToDo
              *      Report % completion (and make all the scrolling per-file optional)
              *      Issues with per-line printing causing UI to warp
+             *      Block height shown in header
+             *      Donations Banner
              *      Other stagger sizes
              *      Solo mining
              *      Package as pre-built binary for each platform

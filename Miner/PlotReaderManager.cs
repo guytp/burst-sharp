@@ -1,7 +1,5 @@
 ﻿using System;
 using Guytp.BurstSharp.BurstLib;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 
 namespace Guytp.BurstSharp.Miner
@@ -37,6 +35,26 @@ namespace Guytp.BurstSharp.Miner
         /// Defines how many GB of total storage is used across all plot readers.
         /// </summary>
         private decimal _utilisedStorage;
+
+        /// <summary>
+        /// Defines a thread that monitors the progress of a round and updates the UI accordingly.
+        /// </summary>
+        private Thread _progressMonitoringThread;
+
+        /// <summary>
+        /// Defines the mining information about the current block.
+        /// </summary>
+        private MiningInfo _miningInfo;
+
+        /// <summary>
+        /// Defines when the last round started.
+        /// </summary>
+        private DateTime _lastRoundStart;
+
+        /// <summary>
+        /// Defines whether or not this reader manager is alive.
+        /// </summary>
+        private bool _isAlive;
         #endregion
 
         #region Constructors
@@ -66,6 +84,11 @@ namespace Guytp.BurstSharp.Miner
                     _utilisedStorage += _plotReaders[i].UtilisedStorage;
                 }
             }
+
+            // Start the progress monitor
+            _isAlive = true;
+            _progressMonitoringThread = new Thread(ProgressMonitoringThread) { IsBackground = true, Name = "Plot Reader Progress Monitor" };
+            _progressMonitoringThread.Start();
         }
         #endregion
 
@@ -100,6 +123,70 @@ namespace Guytp.BurstSharp.Miner
         #endregion
 
         /// <summary>
+        /// This method is the main progress loop which is used to check how we're currently doing and update the UI accordingly.
+        /// </summary>
+        private void ProgressMonitoringThread()
+        {
+            bool isFirstLoop = true;
+            byte lastAnimationIndex = 0;
+            MiningInfo miningInfo = null;
+            bool lastVisible = false;
+
+            while (_isAlive)
+            {
+                // Determine what state we should display - first if block has changed we need to reset everything back to begining
+                if (miningInfo != _miningInfo)
+                {
+                    lastAnimationIndex = 0;
+                    miningInfo = _miningInfo;
+                }
+                bool visible = miningInfo != null;
+                if (!visible)
+                {
+                    // Update UI if we've got a change
+                    if (isFirstLoop || lastVisible != visible)
+                    {
+                        lastVisible = visible;
+                        isFirstLoop = false;
+                        ConsoleUi.ProgressBarHide();
+                    }
+
+                    // Wait to try again
+                    Thread.Sleep(50);
+                    continue;
+                }
+
+                // Determine how far through our readers are of this block (if we're in a block)
+                decimal value = 0m;
+                string text = null;
+                ulong totalScoops = (ulong)(_utilisedStorage * 1000000000 / Plot.SCOOPS_PER_PLOT / Plot.SCOOP_SIZE);
+                ulong readScoops = 0;
+                ulong totalBytesRead = 0;
+                foreach (PlotReader reader in _plotReaders)
+                {
+                    readScoops += reader.ScoopsRead;
+                    totalBytesRead += reader.BytesRead;
+                }
+                if (totalScoops > 0)
+                    value = (decimal)readScoops / (decimal)totalScoops;
+                double seconds = DateTime.UtcNow.Subtract(_lastRoundStart).TotalSeconds;
+                double bps = totalBytesRead / seconds;
+                double mbps = bps / 1000 / 1000;
+                text = Math.Round(mbps, 1) + " MBps";
+
+                // Display this on first loop or a change in visibility
+                ConsoleUi.ProgressBarSetup(lastAnimationIndex++, value, text);
+                if (lastAnimationIndex > 7)
+                    lastAnimationIndex = 0;
+                lastVisible = true;
+                isFirstLoop = false;
+
+                // Wait to redraw
+                Thread.Sleep(10);
+            }
+        }
+
+        /// <summary>
         /// Starts reading plots for the specifed information and terminates and current plot mining.
         /// </summary>
         /// <param name="miningInfo">
@@ -107,6 +194,10 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         public void ReadPlots(MiningInfo miningInfo)
         {
+            // Store this value
+            _lastRoundStart = DateTime.UtcNow;
+            _miningInfo = miningInfo;
+
             // First let's kill any existing plot reading
             foreach (PlotReader reader in _plotReaders)
                 reader.Terminate();
@@ -160,6 +251,12 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public void Dispose()
         {
+            _isAlive = false;
+            if (_progressMonitoringThread != null)
+            {
+                _progressMonitoringThread?.Join();
+                _progressMonitoringThread = null;
+            }
             if (_plotReaders != null)
             {
                 foreach (PlotReader reader in _plotReaders)
@@ -173,7 +270,6 @@ namespace Guytp.BurstSharp.Miner
             {
                 _plotChecker.DeadlineFound -= PlotCheckerOnDeadlineFound;
                 _plotChecker?.Dispose();
-
             }
         }
         #endregion

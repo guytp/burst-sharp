@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace Guytp.BurstSharp.Miner
 {
@@ -11,6 +12,31 @@ namespace Guytp.BurstSharp.Miner
     public class ConsoleUi : IDisposable
     {
         #region Declarations
+        /// <summary>
+        /// Defines whether the whole screen needs a redraw due to a rendering issue.
+        /// </summary>
+        private bool _redrawRequired;
+
+        /// <summary>
+        /// Defines a flag that can be used to signify redrawing of main text is needed.
+        /// </summary>
+        private bool _redrawTextRequired;
+
+        /// <summary>
+        /// Defines a flag that can be used to signify redrawing of deadlines is needed.
+        /// </summary>
+        private bool _redrawDeadlinesRequired;
+
+        /// <summary>
+        /// Defines a flag that can be used to signify redrawing of the progress bar is needed.
+        /// </summary>
+        private bool _redrawProgressBarRequired;
+
+        /// <summary>
+        /// Defines an object to ensure thread saftey when modifying redraw requirements.
+        /// </summary>
+        private readonly object _redrawLocker = new object();
+
         /// <summary>
         /// Defines the width of the logo, excluding borders.
         /// </summary>
@@ -34,7 +60,7 @@ namespace Guytp.BurstSharp.Miner
         /// <summary>
         /// Defines the thread we use to monitor size changes in the console.
         /// </summary>
-        private Thread _consoleSizeThread;
+        private Thread _thread;
 
         /// <summary>
         /// Defines whether or not our threads are alive.
@@ -57,9 +83,9 @@ namespace Guytp.BurstSharp.Miner
         private readonly List<ColouredTextLine> _text = new List<ColouredTextLine>();
 
         /// <summary>
-        /// Defines an object used to ensure thread saftey.
+        /// Defines an object used to ensure thread saftey when accessing displayed text.
         /// </summary>
-        private readonly object _consoleLocker = new object();
+        private readonly object _textLocker = new object();
 
         /// <summary>
         /// Defines an object used to ensure thread saftey with deadlines.
@@ -87,25 +113,69 @@ namespace Guytp.BurstSharp.Miner
         private readonly Action _exitAction;
 
         /// <summary>
-        /// Defines whether the whole screen needs a redraw due to a rendering issue.
+        /// Defines whether or not the progress bar is currently visible.
         /// </summary>
-        private bool _redrawRequired;
+        private bool _progressBarVisible;
 
+        /// <summary>
+        /// Defines which end-animation is currently shown on the progress bar end piece when it is animating - a value 0-7 inclusive.
+        /// </summary>
+        private byte _progressBarAnimationIndex;
+
+        /// <summary>
+        /// Defines the progress bar from - from 0 to 1.
+        /// </summary>
+        private decimal _progressBarValue;
+
+        /// <summary>
+        /// Defines the text to show at the right of the progress bar after the percentage text - a maximum of 10 characters.
+        /// </summary>
+        private string _progressBarText;
+
+        /// <summary>
+        /// Defines an object to use for thread saftey.
+        /// </summary>
+        private readonly object _progressBarLocker = new object();
+
+        /// <summary>
+        /// Defines how many columns wide the text area is, excluding margins.
+        /// </summary>
         private int _textAreaWidth;
 
+        /// <summary>
+        /// Defines how many rows high the text area is, excluding margins.
+        /// </summary>
         private int _textAreaHeight;
 
+        /// <summary>
+        /// Defines which row the text area starts on.
+        /// </summary>
         private int _textAreaStartRow;
 
+        /// <summary>
+        /// Defines which column the text area start on.
+        /// </summary>
         private int _textAreaStartCol;
 
-        private int _nonceAreaWidth;
+        /// <summary>
+        /// Defines the width of the deadline area, excluding margins.
+        /// </summary>
+        private int _deadlineAreaWidth;
 
-        private int _nonceAreaHeight;
+        /// <summary>
+        /// Defines the height of the deadline area, excluding margins.
+        /// </summary>
+        private int _deadlineAreaHeight;
 
-        private int _nonceAreaStartRow;
+        /// <summary>
+        /// Defines which row the deadline area start on.
+        /// </summary>
+        private int _deadlineAreaStartRow;
 
-        private int _nonceAreaStartCol;
+        /// <summary>
+        /// Defines which column the deadline area start on.
+        /// </summary>
+        private int _deadlineAreaStartCol;
         #endregion
 
         #region Constructors
@@ -128,35 +198,68 @@ namespace Guytp.BurstSharp.Miner
 
             // Create our size monitoring thread
             _isAlive = true;
-            _consoleSizeThread = new Thread(ConsoleSizeThread) { IsBackground = true, Name = "Console Size Monitor", Priority = ThreadPriority.Lowest };
-            _consoleSizeThread.Start();
+            _thread = new Thread(ConsoleDrawingThread) { IsBackground = true, Name = "Console Drawing", Priority = ThreadPriority.Highest };
+            _thread.Start();
         }
         #endregion
 
         /// <summary>
         /// This method is the main entry point for the console size thread whose main purpose is to determine whether or not the console has changed size and if so perform a full redraw.
         /// </summary>
-        private void ConsoleSizeThread()
+        private void ConsoleDrawingThread()
         {
             while (_isAlive)
             {
-                bool update = false;
+                // Check if size has changed anywhere
+                bool redrawRequired = false;
                 if (_windowHeight != Console.WindowHeight)
                 {
-                    update = true;
+                    redrawRequired = true;
                     _windowHeight = Console.WindowHeight;
                 }
                 if (_windowWidth != Console.WindowWidth)
                 {
-                    update = true;
+                    redrawRequired = true;
                     _windowWidth = Console.WindowWidth;
                 }
-                if (update || _redrawRequired)
+
+                // Determine what needs redrawing
+                bool redrawDeadlinesRequired;
+                bool redrawTextRequired;
+                bool redrawProgressBarRequired;
+                lock (_redrawLocker)
+                {
+                    // Set local states first
+                    redrawRequired = redrawRequired || _redrawRequired;
+                    redrawDeadlinesRequired = _redrawDeadlinesRequired;
+                    redrawTextRequired = _redrawTextRequired;
+                    redrawProgressBarRequired = _redrawProgressBarRequired;
+
+                    // Reset all states back
+                    _redrawRequired = false;
+                    _redrawProgressBarRequired = false;
+                    _redrawTextRequired = false;
+                    _redrawDeadlinesRequired = false;
+                }
+
+                // Redraw as appropriate
+                if (redrawRequired)
                 {
                     _redrawRequired = false;
                     RedrawScreen();
+                    Console.SetCursorPosition(0, 0);
                 }
-                Thread.Sleep(50);
+                else
+                {
+                    if (redrawDeadlinesRequired)
+                        RedrawDeadlines();
+                    if (redrawProgressBarRequired)
+                        RedrawProgressBar();
+                    if (redrawTextRequired)
+                        RedrawTextArea();
+                    Console.SetCursorPosition(0, 0);
+                }
+                Thread.Sleep(200);
             }
         }
 
@@ -188,15 +291,15 @@ namespace Guytp.BurstSharp.Miner
 
                 // Determine nonce area bounding - we want a maximum width of 80
                 int availableNonceWidth = _windowWidth - LogoWidth - 7; // 7 for: 2 - left/right window borders, 1 - central border, 4 - padding in each section
-                _nonceAreaWidth = availableNonceWidth > MaximumNonceSectionWidth ? MaximumNonceSectionWidth : availableNonceWidth;
-                _nonceAreaHeight = _windowHeight - 4;
-                if (_nonceAreaWidth < 0 || _nonceAreaHeight < 0)
+                _deadlineAreaWidth = availableNonceWidth > MaximumNonceSectionWidth ? MaximumNonceSectionWidth : availableNonceWidth;
+                _deadlineAreaHeight = _windowHeight - 4;
+                if (_deadlineAreaWidth < 0 || _deadlineAreaHeight < 0)
                 {
-                    _nonceAreaWidth = 0;
-                    _nonceAreaHeight = 0;
+                    _deadlineAreaWidth = 0;
+                    _deadlineAreaHeight = 0;
                 }
-                _nonceAreaStartCol = _windowWidth - _nonceAreaWidth - 2;
-                _nonceAreaStartRow = 1;
+                _deadlineAreaStartCol = _windowWidth - _deadlineAreaWidth - 2;
+                _deadlineAreaStartRow = 1;
 
                 // Draw the border leaving bottom 2 rows empty as we've already drawn function keys here
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -204,7 +307,7 @@ namespace Guytp.BurstSharp.Miner
 
                 // First draw the horizontal borders across the center row underneath the logo up to where it meets the main content / nonce border
                 int logoBottomBorderRow = LogoHeight + 1;
-                int mainContentRightBorderColumn = _windowWidth - _nonceAreaWidth - 4; // 3 for two padding spaces in nonce area plus the rightmost border and one for offset
+                int mainContentRightBorderColumn = _windowWidth - _deadlineAreaWidth - 4; // 3 for two padding spaces in nonce area plus the rightmost border and one for offset
                 Console.SetCursorPosition(1, logoBottomBorderRow);
                 for (int i = 1; i < mainContentRightBorderColumn; i++)
                     Console.Write("═");
@@ -260,11 +363,11 @@ namespace Guytp.BurstSharp.Miner
 
                 // Add nonce header
                 string nonceHeaderText = " Found Nonces ";
-                Console.SetCursorPosition(mainContentRightBorderColumn + 1 + (_nonceAreaWidth / 2) - (nonceHeaderText.Length / 2), 0);
+                Console.SetCursorPosition(mainContentRightBorderColumn + 1 + (_deadlineAreaWidth / 2) - (nonceHeaderText.Length / 2), 0);
                 Console.Write(nonceHeaderText);
 
                 // Now draw text
-                _textAreaWidth = _windowWidth - _nonceAreaWidth - 7;
+                _textAreaWidth = _windowWidth - _deadlineAreaWidth - 7;
                 _textAreaHeight = _windowHeight - 11;
                 _textAreaStartRow = 8;
                 _textAreaStartCol = 2;
@@ -313,6 +416,9 @@ namespace Guytp.BurstSharp.Miner
                         }
                     }
                 }
+
+                // Draw the progress bar
+                RedrawProgressBar();
             }
             catch (Exception ex)
             {
@@ -329,65 +435,55 @@ namespace Guytp.BurstSharp.Miner
         {
             try
             {
-                Console.BackgroundColor = ConsoleColor.Blue;
-                Console.ForegroundColor = ConsoleColor.White;
+                // Get a handle to the text we'll draw
                 ColouredTextLine[] lines;
-                lock (_consoleLocker)
-                {
+                lock (_textLocker)
                     lines = _text.ToArray();
-                }
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    if (i >= _textAreaHeight)
-                        break;
-                    ColouredTextLine colouredText = lines[i];
-                    string text = colouredText.Text;
-                    if (text.Length > _textAreaWidth)
-                        text = text.Substring(0, _textAreaWidth);
-                    Console.ForegroundColor = colouredText.ForegroundColour;
-                    Console.BackgroundColor = colouredText.BackgroundColour;
-                    Console.SetCursorPosition(_textAreaStartCol, _textAreaStartRow + i);
-                    while (text.Length < _textAreaWidth)
-                        text += " ";
-                    Console.Write(text);
-                }
-                Console.SetCursorPosition(0, 0);
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                _redrawRequired = true;
-            }
-        }
 
-        /// <summary>
-        /// Adds a new line to our draw buffer and triggers a redraw.
-        /// </summary>
-        /// <param name="text">
-        /// The text to draw.
-        /// </param>
-        private void InternalWriteLine(ColouredTextLine text)
-        {
-            if (_textAreaWidth < 1)
-                return;
-            try
-            {
-                lock (_consoleLocker)
+                // We need to count bototm to top to determine which lines to display as we may not be able to fit them all in
+                int startOffset = 0;
+                int totalLinesCounted = 0;
+                for (int i = lines.Length - 1; i >= 0; i--)
                 {
-                    string[] lines = text.Text.Replace("\r", string.Empty).Split(new char[] { '\n' });
-                    foreach (string line in lines)
+                    string text = lines[i].Text;
+                    totalLinesCounted += text.Length / _textAreaWidth;
+                    if (text.Length % _textAreaWidth > 0)
+                        totalLinesCounted++;
+                    if (totalLinesCounted >= _textAreaHeight)
                     {
-                        int offset = 0;
-                        while (offset < line.Length)
-                        {
-                            int toAdd = line.Length - offset < _textAreaWidth ? line.Length - offset : _textAreaWidth;
-                            _text.Add(new ColouredTextLine(line.Substring(offset, toAdd), text.ForegroundColour, text.BackgroundColour));
-                            offset += toAdd;
-                        }
+                        startOffset = i;
+                        break;
                     }
-                    if (_text.Count > _textAreaHeight)
-                        _text.RemoveRange(0, _text.Count - _windowHeight);
                 }
-                RedrawTextArea();
+                int linesToSkip = totalLinesCounted <= _textAreaHeight ? 0 : totalLinesCounted - _textAreaHeight;
+
+                // Now draw as appropriate
+                int linesWritten = 0;
+                int initialLinesSkipped = 0;
+                for (int i = startOffset; i < lines.Length; i++)
+                {
+                    ColouredTextLine colouredText = lines[i];
+                    Console.BackgroundColor = colouredText.BackgroundColour;
+                    Console.ForegroundColor = colouredText.ForegroundColour;
+                    string text = colouredText.Text;
+                    for (int characterOffset = 0; characterOffset < text.Length;)
+                    {
+                        int remainingChars = text.Length - characterOffset;
+                        int toRead = remainingChars > _textAreaWidth ? _textAreaWidth : remainingChars;
+                        string thisChunk = text.Substring(characterOffset, toRead);
+                        while (thisChunk.Length < _textAreaWidth)
+                            thisChunk += " ";
+                        if (linesToSkip <= initialLinesSkipped)
+                        {
+                            Console.SetCursorPosition(_textAreaStartCol, _textAreaStartRow + linesWritten);
+                            Console.Write(thisChunk);
+                            linesWritten++;
+                        }
+                        else
+                            initialLinesSkipped++;
+                        characterOffset += toRead;
+                    }
+                }
             }
             catch (ArgumentOutOfRangeException)
             {
@@ -401,7 +497,7 @@ namespace Guytp.BurstSharp.Miner
         private void RedrawDeadlines()
         {
             // Skip if nothing to fit
-            if (_nonceAreaWidth < 4)
+            if (_deadlineAreaWidth < 4)
                 return;
 
             // First lets clone the list for redraw
@@ -409,12 +505,12 @@ namespace Guytp.BurstSharp.Miner
             Deadline[] deadlines;
             lock (_deadlineLocker)
                 deadlines = _deadlines.ToArray();
-            
+
             // Define shared header/footers for each deadline
             string header = "┌";
             string footer = "└";
             string blankLine = "  ";
-            for (int i = 0; i < _nonceAreaWidth - 2; i++)
+            for (int i = 0; i < _deadlineAreaWidth - 2; i++)
             {
                 header += "─";
                 footer += "─";
@@ -425,9 +521,9 @@ namespace Guytp.BurstSharp.Miner
 
             // Blank out the box
             Console.BackgroundColor = ConsoleColor.Blue;
-            for (int i = 0; i < _nonceAreaHeight; i++)
+            for (int i = 0; i < _deadlineAreaHeight; i++)
             {
-                Console.SetCursorPosition(_nonceAreaStartCol, _nonceAreaStartRow + i);
+                Console.SetCursorPosition(_deadlineAreaStartCol, _deadlineAreaStartRow + i);
                 Console.Write(blankLine);
             }
 
@@ -474,12 +570,12 @@ namespace Guytp.BurstSharp.Miner
             // Now draw this text out to screen but only up to number of rows we can have
             int startOffset = 0;
             int printableLines = deadlineText.Count();
-            if (printableLines > _nonceAreaHeight)
-                startOffset = printableLines - _nonceAreaHeight;
+            if (printableLines > _deadlineAreaHeight)
+                startOffset = printableLines - _deadlineAreaHeight;
             int outputLine = 0;
             for (int i = startOffset; i < deadlineText.Count - 1; i++)
             {
-                Console.SetCursorPosition(_nonceAreaStartCol, _nonceAreaStartRow + outputLine);
+                Console.SetCursorPosition(_deadlineAreaStartCol, _deadlineAreaStartRow + outputLine);
                 Console.BackgroundColor = deadlineText[i].BackgroundColour;
                 Console.ForegroundColor = deadlineText[i].ForegroundColour;
                 outputLine++;
@@ -489,28 +585,113 @@ namespace Guytp.BurstSharp.Miner
         }
 
         /// <summary>
-        /// Encapsulate a line of text to appear in a "nonce found" box.
+        /// Redraws the progress bar based on current settings.
         /// </summary>
-        /// <param name="text">
-        /// The text line.
-        /// </param>
-        /// <returns>
-        /// An appropriately formatted text string.
-        /// </returns>
-        private string PrepareDeadlineTextLine(string text)
+        private void RedrawProgressBar()
         {
-            string textCut = text;
-            int maximumTextSize = _nonceAreaWidth - 4;
-            if (text.Length > maximumTextSize)
-                textCut = textCut.Substring(0, maximumTextSize);
-            string returnValue = "│ " + textCut;
-            while (returnValue.Length < _nonceAreaWidth - 1)
-                returnValue += " ";
-            return returnValue + "│";
+            lock (_progressBarLocker)
+            {
+                // We have a 2 spaces - one at each side of screen, 2 brackets as containers for the bar, 5 characters for percentage text, 1 space before that, 5 spaces after that and then the progress text at 10 characters.
+                const int reservedSpaced = 2 + 2 + 5 + 1 + 5 + 10;
+                int remainingSpace = _windowWidth - reservedSpaced;
+
+                // We draw this full width of the window in the row above function keys on a black background - if we're not even showing progress bar then we just want to blank that whole line out
+                Console.SetCursorPosition(0, _windowHeight - 2);
+                Console.BackgroundColor = ConsoleColor.Black;
+                Console.ForegroundColor = ConsoleColor.White;
+                if (!_progressBarVisible || remainingSpace < 0)
+                {
+                    StringBuilder blankLine = new StringBuilder(_windowWidth);
+                    for (int i = 0; i < _windowWidth; i++)
+                        blankLine.Append(" ");
+                    Console.Write(blankLine.ToString());
+                    return;
+                }
+
+                // We know we can fit it, so let's calculate how much for each block
+                decimal percentagePerBlock = 100m / remainingSpace;
+                byte blocksToUse = (byte)Math.Round((_progressBarValue * 100m) / percentagePerBlock);
+                StringBuilder percentageBar = new StringBuilder(_windowWidth);
+                percentageBar.Append(" [");
+                for (int i = 0; i < blocksToUse; i++)
+                    percentageBar.Append("=");
+                for (int i = blocksToUse; i < remainingSpace; i++)
+                    percentageBar.Append(" ");
+                percentageBar.Append("] ");
+
+                // Add in right hand label
+                StringBuilder percentageText = new StringBuilder(5);
+                percentageText.Append(Math.Round(_progressBarValue * 100m, 1).ToString());
+                percentageText.Append("%");
+                while (percentageText.Length < 5)
+                    percentageText.Append(" ");
+                percentageBar.Append(percentageText.ToString());
+                percentageBar.Append("     ");
+
+                // Now draw additional text if present
+                if (!string.IsNullOrWhiteSpace(_progressBarText))
+                    percentageBar.Append((_progressBarText.Length < 10 ? _progressBarText : _progressBarText.Substring(0, 10)));
+
+                // Display this
+                while (percentageBar.Length < _windowWidth)
+                    percentageBar.Append(" ");
+                Console.Write(percentageBar.ToString());
+
+                // Go back and paint the indicator chevron in green instead of white
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.SetCursorPosition(blocksToUse + 2, _windowHeight - 2);
+                if (_progressBarAnimationIndex == 0 || _progressBarAnimationIndex == 4)
+                    Console.Write("|");
+                else if (_progressBarAnimationIndex == 1 || _progressBarAnimationIndex == 5)
+                    Console.Write("/");
+                else if (_progressBarAnimationIndex == 2 || _progressBarAnimationIndex == 6)
+                    Console.Write("-");
+                else
+                    Console.Write("\\");
+            }
         }
         #endregion
 
         #region Public Display Control
+        /// <summary>
+        /// Hides the progress bar.
+        /// </summary>
+        public static void ProgressBarHide()
+        {
+            if (_applicationInstance == null)
+                return;
+            _applicationInstance._progressBarVisible = false;
+            lock (_applicationInstance._redrawLocker)
+                _applicationInstance._redrawProgressBarRequired = true;
+        }
+
+        /// <summary>
+        /// Displays the progress bar with the specified settings.
+        /// </summary>
+        /// <param name="animationIndex">
+        /// Which end-animation is currently shown on the progress bar end piece when it is animating - a value 0-7 inclusive.
+        /// </param>
+        /// <param name="value">
+        /// The progress bar from - from 0 to 1.
+        /// </param>
+        /// <param name="text">
+        /// The text to show at the right of the progress bar after the percentage text - a maximum of 10 characters.
+        /// </param>
+        public static void ProgressBarSetup(byte animationIndex, decimal value, string text)
+        {
+            if (_applicationInstance == null)
+                return;
+            lock (_applicationInstance._progressBarLocker)
+            {
+                _applicationInstance._progressBarVisible = true;
+                _applicationInstance._progressBarAnimationIndex = animationIndex;
+                _applicationInstance._progressBarValue = value;
+                _applicationInstance._progressBarText = text;
+                lock (_applicationInstance._redrawLocker)
+                    _applicationInstance._redrawProgressBarRequired = true;
+            }
+        }
+
         /// <summary>
         /// Write a line to the current console UI.
         /// </summary>
@@ -532,7 +713,16 @@ namespace Guytp.BurstSharp.Miner
                 Console.WriteLine(text);
             }
             else
-                _applicationInstance.InternalWriteLine(new ColouredTextLine(text, foreground, background));
+            {
+                lock (_applicationInstance._textLocker)
+                {
+                    _applicationInstance._text.Add(new ColouredTextLine(text, foreground, background));
+                    if (_applicationInstance._text.Count > 500)
+                        _applicationInstance._text.RemoveRange(0, _applicationInstance._text.Count - 500);
+                }
+                lock (_applicationInstance._redrawLocker)
+                    _applicationInstance._redrawTextRequired = true;
+            }
         }
 
         /// <summary>
@@ -554,7 +744,31 @@ namespace Guytp.BurstSharp.Miner
                 if (_applicationInstance._deadlines.Count > 50)
                     _applicationInstance._deadlines.RemoveRange(0, _applicationInstance._deadlines.Count - 50);
             }
-            _applicationInstance.RedrawDeadlines();
+            lock (_applicationInstance._redrawLocker)
+                _applicationInstance._redrawDeadlinesRequired = true;
+        }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Encapsulate a line of text to appear in a "nonce found" box.
+        /// </summary>
+        /// <param name="text">
+        /// The text line.
+        /// </param>
+        /// <returns>
+        /// An appropriately formatted text string.
+        /// </returns>
+        private string PrepareDeadlineTextLine(string text)
+        {
+            string textCut = text;
+            int maximumTextSize = _deadlineAreaWidth - 4;
+            if (text.Length > maximumTextSize)
+                textCut = textCut.Substring(0, maximumTextSize);
+            string returnValue = "│ " + textCut;
+            while (returnValue.Length < _deadlineAreaWidth - 1)
+                returnValue += " ";
+            return returnValue + "│";
         }
         #endregion
 
@@ -629,10 +843,10 @@ namespace Guytp.BurstSharp.Miner
         public void Dispose()
         {
             _isAlive = false;
-            if (_consoleSizeThread != null)
+            if (_thread != null)
             {
-                _consoleSizeThread.Join();
-                _consoleSizeThread = null;
+                _thread.Join();
+                _thread = null;
             }
             if (_applicationInstance == this)
                 _applicationInstance = null;

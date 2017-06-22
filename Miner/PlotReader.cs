@@ -74,7 +74,7 @@ namespace Guytp.BurstSharp.Miner
                             FileInfo fi = new FileInfo(file);
                             if (fi.Length != expectedSize)
                                 continue;
-                            value += expectedSize / 1073741824m;
+                            value += expectedSize / 1000000000m;
                         }
                         catch
                         {
@@ -88,6 +88,16 @@ namespace Guytp.BurstSharp.Miner
                 return value;
             }
         }
+
+        /// <summary>
+        /// Gets how many scoops have been read this round.
+        /// </summary>
+        public ulong ScoopsRead { get; private set; }
+
+        /// <summary>
+        /// Gets how many bytes have been read this round.
+        /// </summary>
+        public ulong BytesRead { get; private set; }
         #endregion
 
         #region Events
@@ -152,12 +162,18 @@ namespace Guytp.BurstSharp.Miner
         {
             try
             {
+                // Reset some values
+                BytesRead = 0;
+                ScoopsRead = 0;
+
+                // Get which files to mine
                 string[] files = Directory.GetFiles(_directory, "*_*_*_*");
                 byte[] readBuffer = null;
                 List<Scoop> scoops = new List<Scoop>(500);
-                ulong allBytesRead = 0;
                 Stopwatch swTotal = new Stopwatch();
                 swTotal.Start();
+
+                // Process each file
                 foreach (string file in files)
                 {
                     // Get handle to file and ensure it is valid
@@ -201,12 +217,6 @@ namespace Guytp.BurstSharp.Miner
                         continue;
                     }
 
-#if STUB
-                // If we're on stub nonces then check if this file contains it
-                if (Configuration.StubNonce > 0 && (startNonce > Configuration.StubNonce || startNonce + numberOfNonces < Configuration.StubNonce))
-                    continue;
-#endif
-
                     // Now we have a good plot file let's take our scoop and for each nonce process it
                     uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
                     try
@@ -228,13 +238,14 @@ namespace Guytp.BurstSharp.Miner
                             while (remainingToRead > 0)
                             {
                                 uint read = (uint)stream.Read(readBuffer, 0, (int)(remainingToRead > bufferSize ? bufferSize : remainingToRead));
+                                BytesRead += read;
                                 remainingToRead -= read;
                                 scoops.Clear();
                                 for (uint bufferOffset = 0; bufferOffset < read; bufferOffset += Plot.SCOOP_SIZE, currentNonce++)
-#if STUB
-                                if (Configuration.StubNonce == 0 || Configuration.StubNonce == currentNonce)
-#endif
+                                {
                                     scoops.Add(new Scoop(_miningInfo.BlockHeight, currentNonce, accountId, readBuffer, bufferOffset));
+                                    ScoopsRead++;
+                                }
 
                                 // Notify our callers
                                 ScoopsDiscovered?.Invoke(this, new ScoopsDiscoveredEventArgs(scoops));
@@ -252,15 +263,14 @@ namespace Guytp.BurstSharp.Miner
                     sw.Stop();
                     double secs = sw.Elapsed.TotalSeconds;
                     double bps = desiredBufferSize / secs;
-                    allBytesRead += desiredBufferSize;
-                    double mbps = bps / 1024 / 1024;
+                    double mbps = bps / 1000 / 1000;
                     Logger.Debug(String.Format("Processed {0} in {1} secs = {2} MBps", file, secs, mbps));
 
                     // Return if we're done
                     if (!_isAlive)
                         break;
                 }
-                Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (allBytesRead / swTotal.Elapsed.TotalSeconds) / 1024 / 1024, allBytesRead / 1024 / 1024 / 1024));
+                Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (BytesRead / swTotal.Elapsed.TotalSeconds) / 1000 / 1000, BytesRead / 1000 / 1000 / 1000));
             }
             catch (Exception ex)
             {

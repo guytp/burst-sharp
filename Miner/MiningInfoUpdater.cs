@@ -89,18 +89,9 @@ namespace Guytp.BurstSharp.Miner
                 try
                 {
                     string stringResponse;
-#if STUB
-                    if (string.IsNullOrEmpty(Configuration.StubJson))
-                    {
-#endif
                     HttpResponseMessage response = _client.GetAsync("/burst?requestType=getMiningInfo").Result;
                     response.EnsureSuccessStatusCode();
                     stringResponse = response.Content.ReadAsStringAsync().Result;
-#if STUB
-                    }
-                    else
-                        stringResponse = Configuration.StubJson;
-#endif
                     if (stringResponse != _lastJson)
                     {
                         MiningInfo = JsonConvert.DeserializeObject<MiningInfo>(stringResponse);
