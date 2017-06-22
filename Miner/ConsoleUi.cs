@@ -390,15 +390,16 @@ namespace Guytp.BurstSharp.Miner
                 // Add text area header if defined
                 if (_textAreaHeader != null)
                 {
-                    int availableWidth = mainContentRightBorderColumn - 2;
+                    int availableWidth = mainContentRightBorderColumn - 1;
                     string textToWrite = _textAreaHeader.Length + 2 > availableWidth ? " " + _textAreaHeader.Substring(0, availableWidth - 2) + " " : " " + _textAreaHeader + " ";
-                    Console.SetCursorPosition((availableWidth / 2) - (textToWrite.Length / 2), LogoHeight + 1);
+                    int centerPoint = (availableWidth / 2) + 1;
+                    Console.SetCursorPosition(centerPoint - (textToWrite.Length / 2), LogoHeight + 1);
                     Console.Write(textToWrite);
                 }
 
                 // Add nonce header
-                string nonceHeaderText = " Found Nonces ";
-                Console.SetCursorPosition(mainContentRightBorderColumn + 1 + (_deadlineAreaWidth / 2) - (nonceHeaderText.Length / 2), 0);
+                string nonceHeaderText = " Found Deadlines ";
+                Console.SetCursorPosition(mainContentRightBorderColumn + 2 + (_deadlineAreaWidth / 2) - (nonceHeaderText.Length / 2), 0);
                 Console.Write(nonceHeaderText);
 
                 // Now draw text
