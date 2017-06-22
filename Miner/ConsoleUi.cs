@@ -40,12 +40,12 @@ namespace Guytp.BurstSharp.Miner
         /// <summary>
         /// Defines the width of the logo, excluding borders.
         /// </summary>
-        private const int LogoWidth = 58;
+        private const int LogoWidth = 66;
 
         /// <summary>
         /// Defines the height of the logo, excluding borders.
         /// </summary>
-        private const int LogoHeight = 6;
+        private const int LogoHeight = 9;
 
         /// <summary>
         /// Defines the maximum width of the nonce section.
@@ -349,17 +349,21 @@ namespace Guytp.BurstSharp.Miner
                 int logoColumn = 2 + ((mainContentRightBorderColumn - LogoWidth - 4) / 2);
                 Console.SetCursorPosition(logoColumn, 1);
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write(@" _                    _            _                      ");
+                Console.Write(@"     _                    _            _                      ");
                 Console.SetCursorPosition(logoColumn, 2);
-                Console.Write(@"| |__  _   _ _ __ ___| |_      ___| |__   __ _ _ __ _ __  ");
+                Console.Write(@"    | |__  _   _ _ __ ___| |_      ___| |__   __ _ _ __ _ __  ");
                 Console.SetCursorPosition(logoColumn, 3);
-                Console.Write(@"| '_ \| | | | '__/ __| __|____/ __| '_ \ / _` | '__| '_ \ ");
+                Console.Write(@"    | '_ \| | | | '__/ __| __|____/ __| '_ \ / _` | '__| '_ \ ");
                 Console.SetCursorPosition(logoColumn, 4);
-                Console.Write(@"| |_) | |_| | |  \__ \ ||_____\__ \ | | | (_| | |  | |_) |");
+                Console.Write(@"    | |_) | |_| | |  \__ \ ||_____\__ \ | | | (_| | |  | |_) |");
                 Console.SetCursorPosition(logoColumn, 5);
-                Console.Write(@"|_.__/ \__,_|_|  |___/\__|    |___/_| |_|\__,_|_|  | .__/ ");
+                Console.Write(@"    |_.__/ \__,_|_|  |___/\__|    |___/_| |_|\__,_|_|  | .__/ ");
                 Console.SetCursorPosition(logoColumn, 6);
-                Console.Write(@"                                                   |_|    ");
+                Console.Write(@"                                                       |_|    ");
+                Console.SetCursorPosition(logoColumn, 8);
+                Console.Write("   Written by guytp - development donations are always welcome.");
+                Console.SetCursorPosition(logoColumn, 9);
+                Console.Write("[1HmJjK9nNvEstQNLBfxJyvTfkgGBCmngHZ]  [BURST-DXGM-62RW-X8G6-A493G]");
 
                 // Add nonce header
                 string nonceHeaderText = " Found Nonces ";
@@ -368,8 +372,8 @@ namespace Guytp.BurstSharp.Miner
 
                 // Now draw text
                 _textAreaWidth = _windowWidth - _deadlineAreaWidth - 7;
-                _textAreaHeight = _windowHeight - 11;
-                _textAreaStartRow = 8;
+                _textAreaHeight = _windowHeight - 5 - LogoHeight;
+                _textAreaStartRow = LogoHeight + 2;
                 _textAreaStartCol = 2;
                 if (_textAreaWidth < 0 || _textAreaHeight < 0)
                 {

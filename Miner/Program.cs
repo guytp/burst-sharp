@@ -17,10 +17,7 @@ namespace Guytp.BurstSharp.Miner
         public static void Main(string[] args)
         {
             /* ToDo
-             *      Report % completion (and make all the scrolling per-file optional)
-             *      Issues with per-line printing causing UI to warp
              *      Block height shown in header
-             *      Donations Banner
              *      Other stagger sizes
              *      Solo mining
              *      Package as pre-built binary for each platform
