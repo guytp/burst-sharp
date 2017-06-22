@@ -229,7 +229,7 @@ namespace Guytp.BurstSharp.Miner
                     uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
                     try
                     {
-                        using (FileStream stream = File.Open(file, FileMode.Open, FileAccess.Read))
+                        using (FileStream stream = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
                         {
                             // Create our reading buffers
                             uint remainingToRead = desiredBufferSize;
