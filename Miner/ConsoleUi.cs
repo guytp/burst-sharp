@@ -305,7 +305,11 @@ namespace Guytp.BurstSharp.Miner
                 Console.TreatControlCAsInput = true;
                 Console.CursorVisible = false;
                 Console.Title = "burst-sharp miner";
-                Console.Clear();
+                int totalCharacters = _windowHeight * _windowWidth;
+                StringBuilder blankingText = new StringBuilder(totalCharacters);
+                for (int i = 0; i < totalCharacters; i++)
+                    blankingText.Append(" ");
+                Console.Write(blankingText.ToString());
 
                 // We fill entire thing black as that's what we want at bottom and bottom right corner weirdly clips - but main window we actually want to have a blue background
                 Console.SetCursorPosition(0, 0);
