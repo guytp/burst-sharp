@@ -3,6 +3,7 @@ using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace Guytp.BurstSharp.Miner
 {
@@ -296,8 +297,11 @@ namespace Guytp.BurstSharp.Miner
                 // Clear the window and set its state
                 Console.SetCursorPosition(0, 0);
                 Console.BackgroundColor = ConsoleColor.Black;
-                Console.BufferHeight = _windowHeight;
-                Console.BufferWidth = _windowWidth;
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    Console.BufferHeight = _windowHeight;
+                    Console.BufferWidth = _windowWidth;
+                }
                 Console.TreatControlCAsInput = true;
                 Console.CursorVisible = false;
                 Console.Title = "burst-sharp miner";
