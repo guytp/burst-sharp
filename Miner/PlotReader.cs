@@ -278,7 +278,7 @@ namespace Guytp.BurstSharp.Miner
                     if (!_isAlive)
                         break;
                 }
-                Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (BytesRead / swTotal.Elapsed.TotalSeconds) / 1000 / 1000, BytesRead / 1000 / 1000 / 1000));
+                Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (BytesRead / 1000 / 1000 / swTotal.Elapsed.TotalSeconds) / 1000 / 1000, (decimal)BytesRead / 1000m / 1000m / 1000m));
                 UtilisedStorage = utilisedStorage;
             }
             catch (Exception ex)
