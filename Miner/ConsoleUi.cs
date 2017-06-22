@@ -281,7 +281,7 @@ namespace Guytp.BurstSharp.Miner
                         RedrawTextArea();
                     Console.SetCursorPosition(0, 0);
                 }
-                Thread.Sleep(200);
+                Thread.Sleep(20);
             }
         }
 
