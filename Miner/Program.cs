@@ -16,11 +16,6 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         public static void Main(string[] args)
         {
-            /* ToDo
-             *      Other stagger sizes
-             *      Solo mining
-             *      Package as pre-built binary for each platform
-             */
             try
             {
                 using (Miner miner = new Miner())
