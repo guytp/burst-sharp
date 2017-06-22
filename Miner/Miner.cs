@@ -132,6 +132,7 @@ namespace Guytp.BurstSharp.Miner
             Logger.Debug("Mining info updater: started");
 
             // Finally hand over to the console UI which blocks us
+            Logger.Info("Miner has started up successfully");
             _consoleUi.Run();
         }
 

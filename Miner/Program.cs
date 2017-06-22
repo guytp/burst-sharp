@@ -17,7 +17,6 @@ namespace Guytp.BurstSharp.Miner
         public static void Main(string[] args)
         {
             /* ToDo
-             *      Block height shown in header
              *      Duration/ETA on progress bar
              *      Other stagger sizes
              *      Solo mining

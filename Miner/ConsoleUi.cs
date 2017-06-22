@@ -742,7 +742,9 @@ namespace Guytp.BurstSharp.Miner
             {
                 lock (_applicationInstance._textLocker)
                 {
-                    _applicationInstance._text.Add(new ColouredTextLine(text, foreground, background));
+                    string[] split = text.Replace("\r\n", "\n").Split(new char[] { '\r', '\n' });
+                    foreach (string textLine in split)
+                        _applicationInstance._text.Add(new ColouredTextLine(textLine, foreground, background));
                     if (_applicationInstance._text.Count > 500)
                         _applicationInstance._text.RemoveRange(0, _applicationInstance._text.Count - 500);
                 }
