@@ -101,11 +101,13 @@ namespace Guytp.BurstSharp.Miner
                 catch (AggregateException ex)
                 {
                     if (ex.InnerExceptions.Count == 1 && ex.InnerException is TaskCanceledException)
-                        Logger.Error("Timeout requesting current block status");
+                        Logger.Warn("Timeout requesting current block status");
                     else if (ex.InnerException.GetType().Name == "WinHttpException")
-                        Logger.Error("Error reading mining info:" + ex.InnerException.Message);
+                        Logger.Warn("Error reading mining info:" + ex.InnerException.Message);
+                    else if (ex.ToString().Contains("System.Net.Http.CurlException: Couldn't connect to server"))
+                        Logger.Warn("Could not connect to server to get new blocks");
                     else
-                        throw;
+                        Logger.Error("Unexpected error reading blocks: " + ex.InnerException.Message);
                 }
                 catch (Exception ex)
                 {
