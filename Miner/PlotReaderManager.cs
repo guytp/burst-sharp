@@ -63,7 +63,7 @@ namespace Guytp.BurstSharp.Miner
         {
             // Create our shabel for local hashing when determining the scoop number for each block
             _shabel = new Shabal256();
-            
+
             // Now create and hook up to these events
             Logger.Info("Initialising plot readers");
             if (Configuration.PlotDirectories != null && Configuration.PlotDirectories.Length > 0)
@@ -111,6 +111,7 @@ namespace Guytp.BurstSharp.Miner
             byte lastAnimationIndex = 0;
             MiningInfo miningInfo = null;
             bool lastVisible = false;
+            decimal lastValue = 0;
 
             while (_isAlive)
             {
@@ -128,6 +129,7 @@ namespace Guytp.BurstSharp.Miner
                     {
                         lastVisible = visible;
                         isFirstLoop = false;
+                        lastValue = 0;
                         ConsoleUi.ProgressBarHide();
                     }
 
@@ -149,15 +151,46 @@ namespace Guytp.BurstSharp.Miner
                 }
                 if (totalScoops > 0)
                     value = (decimal)readScoops / (decimal)totalScoops;
+
+                // Now determine speed of reading
                 double seconds = DateTime.UtcNow.Subtract(_lastRoundStart).TotalSeconds;
                 double bps = totalBytesRead / seconds;
-                double mbps = bps / 1000 / 1000;
-                text = Math.Round(mbps, 1) + " MBps";
+                double mbps = Math.Round(bps / 1000 / 1000);
+                string mbpsString = mbps.ToString();
+                if (!mbpsString.Contains("."))
+                    mbpsString += ".0";
+                text = mbpsString + " MBps";
+
+                // Based on this determine how much longer we have to go or how long it took depending on the data
+                if (value < 1)
+                {
+                    double scoopsPerSecond = (double)readScoops / seconds;
+                    if (scoopsPerSecond > 0)
+                    {
+                        ulong remainingScoops = totalScoops - readScoops;
+                        double remainingSeconds = (double)remainingScoops / scoopsPerSecond;
+                        TimeSpan remaining = TimeSpan.FromSeconds(remainingSeconds);
+                        string remainingText = remaining.Minutes.ToString();
+                        if (remainingText.Length < 2)
+                            remainingText = "0" + remainingText;
+                        remainingText += ":";
+                        if (remaining.Seconds < 10)
+                            remainingText += "0";
+                        remainingText += remaining.Seconds.ToString();
+                        text += "   ETA: " + remainingText;
+                    }
+                }
+                else if (seconds > 0)
+                    text += "   Dur: " + TimeSpan.FromSeconds(seconds).ToString();
 
                 // Display this on first loop or a change in visibility
-                ConsoleUi.ProgressBarSetup(lastAnimationIndex++, value, text);
-                if (lastAnimationIndex > 7)
-                    lastAnimationIndex = 0;
+                if (lastVisible != visible || lastValue != value)
+                {
+                    ConsoleUi.ProgressBarSetup(lastAnimationIndex++, value, text);
+                    if (lastAnimationIndex > 7)
+                        lastAnimationIndex = 0;
+                }
+                lastValue = value;
                 lastVisible = true;
                 isFirstLoop = false;
 
@@ -181,7 +214,7 @@ namespace Guytp.BurstSharp.Miner
             // First let's kill any existing plot reading
             foreach (PlotReader reader in _plotReaders)
                 reader.Terminate();
-            
+
             // If no mining information stop now
             if (miningInfo == null)
                 return;

@@ -17,7 +17,6 @@ namespace Guytp.BurstSharp.Miner
         public static void Main(string[] args)
         {
             /* ToDo
-             *      Duration/ETA on progress bar
              *      Other stagger sizes
              *      Solo mining
              *      Package as pre-built binary for each platform

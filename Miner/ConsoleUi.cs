@@ -27,6 +27,11 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the maximum width of the nonce section.
         /// </summary>
         private const int MaximumNonceSectionWidth = 80;
+
+        /// <summary>
+        /// Defines the maximum width of text to allocate on the right of the percentage bar.
+        /// </summary>
+        private const int ProgressBarTextWidth = 25;
         #endregion
 
         /// <summary>
@@ -621,8 +626,8 @@ namespace Guytp.BurstSharp.Miner
         {
             lock (_progressBarLocker)
             {
-                // We have a 2 spaces - one at each side of screen, 2 brackets as containers for the bar, 5 characters for percentage text, 1 space before that, 5 spaces after that and then the progress text at 10 characters.
-                const int reservedSpaced = 2 + 2 + 5 + 1 + 5 + 10;
+                // We have a 2 spaces - one at each side of screen, 2 brackets as containers for the bar, 5 characters for percentage text, 1 space before that, 5 spaces after that and then the progress text at ProgressBarTextWidth characters.
+                const int reservedSpaced = 2 + 2 + 5 + 1 + 5 + ProgressBarTextWidth;
                 int remainingSpace = _windowWidth - reservedSpaced;
 
                 // We draw this full width of the window in the row above function keys on a black background - if we're not even showing progress bar then we just want to blank that whole line out
@@ -660,24 +665,27 @@ namespace Guytp.BurstSharp.Miner
 
                 // Now draw additional text if present
                 if (!string.IsNullOrWhiteSpace(_progressBarText))
-                    percentageBar.Append((_progressBarText.Length < 10 ? _progressBarText : _progressBarText.Substring(0, 10)));
+                    percentageBar.Append((_progressBarText.Length < ProgressBarTextWidth ? _progressBarText : _progressBarText.Substring(0, ProgressBarTextWidth)));
 
                 // Display this
                 while (percentageBar.Length < _windowWidth)
                     percentageBar.Append(" ");
                 Console.Write(percentageBar.ToString());
 
-                // Go back and paint the indicator chevron in green instead of white
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.SetCursorPosition(blocksToUse + 2, _windowHeight - 2);
-                if (_progressBarAnimationIndex == 0 || _progressBarAnimationIndex == 4)
-                    Console.Write("|");
-                else if (_progressBarAnimationIndex == 1 || _progressBarAnimationIndex == 5)
-                    Console.Write("/");
-                else if (_progressBarAnimationIndex == 2 || _progressBarAnimationIndex == 6)
-                    Console.Write("-");
-                else
-                    Console.Write("\\");
+                // Go back and paint the indicator chevron in green instead of white if applicable
+                if (blocksToUse != remainingSpace)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.SetCursorPosition(blocksToUse + 2, _windowHeight - 2);
+                    if (_progressBarAnimationIndex == 0 || _progressBarAnimationIndex == 4)
+                        Console.Write("|");
+                    else if (_progressBarAnimationIndex == 1 || _progressBarAnimationIndex == 5)
+                        Console.Write("/");
+                    else if (_progressBarAnimationIndex == 2 || _progressBarAnimationIndex == 6)
+                        Console.Write("-");
+                    else
+                        Console.Write("\\");
+                }
             }
         }
         #endregion
