@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <RootNamespace>Guytp.BurstSharp.BurstLib</RootNamespace>
+    <RuntimeIdentifiers>win7-x64;win7-x86;win8-x64;win8-x86;win8-arm;win81-x64;win81-x86;win81-arm;win10-x64;win10-x86;win10-arm;win10-arm64;rhel.7-x64;ubuntu.14.04-x64;ubuntu.14.10-x64;ubuntu.15.04-x64;ubuntu.15.10-x64;ubuntu.16.04-x64;ubuntu.16.10-x64;centos.7-x64;debian.8-x64;fedora.23-x64;fedora.24-x64;opensuse.13.2-x64;opensuse.42.1-x64;ol.7-x64;ol.7.0-x64;ol.7.1-x64;ol.7.2-x64;linuxmint.17-x64;linuxmint.17.1-x64;linuxmint.17.2-x64;linuxmint.17.3-x64;linuxmint.18-x64;osx.10.10-x64;osx.10.11-x64;osx.10.12-x64;osx-x64;linux-x64;linux-x86;win-arm;linux-arm</RuntimeIdentifiers>
   </PropertyGroup>
 
 </Project>
