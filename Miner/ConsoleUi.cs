@@ -479,6 +479,10 @@ namespace Guytp.BurstSharp.Miner
         {
             try
             {
+                // Return if we don't have enough room
+                if (_textAreaWidth < 1)
+                    return;
+
                 // Get a handle to the text we'll draw
                 ColouredTextLine[] lines;
                 lock (_textLocker)
@@ -654,7 +658,7 @@ namespace Guytp.BurstSharp.Miner
 
                 // We know we can fit it, so let's calculate how much for each block
                 decimal percentagePerBlock = 100m / remainingSpace;
-                byte blocksToUse = (byte)Math.Round((_progressBarValue * 100m) / percentagePerBlock);
+                int blocksToUse = (int)Math.Round((_progressBarValue * 100m) / percentagePerBlock);
                 StringBuilder percentageBar = new StringBuilder(_windowWidth);
                 percentageBar.Append(" [");
                 for (int i = 0; i < blocksToUse; i++)
