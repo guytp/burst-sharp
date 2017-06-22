@@ -168,7 +168,7 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="miningInfo">
         /// The current blocks mining information.
         /// </param>
-        public void Reset(MiningInfo miningInfo)
+        public void NotifyNewRound(MiningInfo miningInfo)
         {
             // Reset our deadlines list
             lock (_deadlineQueueLocker)

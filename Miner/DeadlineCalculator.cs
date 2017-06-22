@@ -6,10 +6,10 @@ using System.Threading;
 namespace Guytp.BurstSharp.Miner
 {
     /// <summary>
-    /// The plot checker is responsible for spawning numerous threads that create shabel hashes of plots as soon as it can.  It acts as a blocking queue up to a predefined size with the
+    /// The deadline calculator is responsible for spawning numerous threads that create shabel hashes of plots as soon as it can.  It acts as a blocking queue up to a predefined size with the
     /// idea that the disk throughput attempts to read as much as it can and then shabel load is then spread across all available cores.
     /// </summary>
-    public class PlotChecker : IDisposable
+    public class DeadlineCalculator : IDisposable
     {
         #region Declarations
         /// <summary>
@@ -57,7 +57,7 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="maximumScoops">
         /// The maximum number of scoops we can hold in the queue at any point in time.
         /// </param>
-        public PlotChecker(uint maximumScoops, uint threads)
+        public DeadlineCalculator(uint maximumScoops, uint threads)
         {
             // Store values
             _scoopQueue = new List<Scoop>();
@@ -108,27 +108,28 @@ namespace Guytp.BurstSharp.Miner
                 foreach (Scoop scoop in scoops)
                 {
                     // Breakout if we're no longer running
-                    if (!_isAlive || _miningInfo == null)
+                    MiningInfo miningInfo = _miningInfo;
+                    if (!_isAlive || miningInfo == null)
                         break;
 
                     // Ensure we're on right block
-                    if (scoop.BlockHeight != _miningInfo.BlockHeight)
+                    if (scoop.BlockHeight != miningInfo.BlockHeight)
                         continue;
 
                     // Calculate the deadline for this scoop
-                    if (lastBlockHeightPrevGenCopied != _miningInfo.BlockHeight)
+                    if (lastBlockHeightPrevGenCopied != miningInfo.BlockHeight)
                     {
                         Array.Copy(_miningInfo.PreviousGenerationSignatureBytes, hashBuffer, 32);
-                        lastBlockHeightPrevGenCopied = _miningInfo.BlockHeight;
+                        lastBlockHeightPrevGenCopied = miningInfo.BlockHeight;
                     }
                     Array.Copy(scoop.Data, 0, hashBuffer, 32, Plot.SCOOP_SIZE);
                     byte[] target = shabal.ComputeBytes(hashBuffer).GetBytes();
                     ulong targetResult = BitConverter.ToUInt64(target, 0);
 
                     // And with our target compute a deadline
-                    ulong deadline = targetResult / _miningInfo.BaseTarget;
-                    if (deadline < _miningInfo.Deadline)
-                        DeadlineFound?.Invoke(this, new DeadlineFoundEventArgs(deadline, scoop, _miningInfo));
+                    ulong deadline = targetResult / miningInfo.BaseTarget;
+                    if (deadline < miningInfo.Deadline)
+                        DeadlineFound?.Invoke(this, new DeadlineFoundEventArgs(deadline, scoop, miningInfo));
                 }
             }
         }
@@ -139,7 +140,7 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="miningInfo">
         /// The details of which block is currently being processed.
         /// </param>
-        public void Reset(MiningInfo miningInfo)
+        public void NotifyNewRound(MiningInfo miningInfo)
         {
             // Store the information and then clear the queue
             lock (_scoopQueueLocker)
@@ -189,10 +190,8 @@ namespace Guytp.BurstSharp.Miner
         /// </summary>
         public void Dispose()
         {
-            // Set values that should free up anything wanting to queue
+            // Log the dispose
             Logger.Debug("Stopping PlotChecker");
-            _maximumScoops = uint.MaxValue;
-            _miningInfo = null;
 
             // Instruct threads to termintae and wait for them to all die
             _isAlive = false;
@@ -203,6 +202,11 @@ namespace Guytp.BurstSharp.Miner
                 _threads = null;
             }
             Logger.Debug("PlotChecker threads all terminated");
+
+            // Set values that should free up anything wanting to queue
+            _maximumScoops = uint.MaxValue;
+            _miningInfo = null;
+
         }
         #endregion
     }

@@ -40,54 +40,10 @@ namespace Guytp.BurstSharp.Miner
         #endregion
 
         #region Properties
-        public decimal UtilisedStorage
-        {
-            get
-            {
-                decimal value = 0;
-                try
-                {
-                    string[] files = Directory.GetFiles(_directory, "*_*_*_*");
-                    foreach (string file in files)
-                    {
-                        try
-                        {
-                            // Get handle to file and ensure it is valid
-                            Stopwatch sw = new Stopwatch();
-                            sw.Start();
-                            string[] fileParts = Path.GetFileName(file).Split(new char[] { '_' }, 4);
-                            ulong accountId;
-                            ulong startNonce;
-                            ulong numberOfNonces;
-                            ulong staggerSize;
-                            if (!ulong.TryParse(fileParts[0], out accountId))
-                                continue;
-                            if (!ulong.TryParse(fileParts[1], out startNonce))
-                                continue;
-                            if (!ulong.TryParse(fileParts[2], out numberOfNonces))
-                                continue;
-                            if (!ulong.TryParse(fileParts[3], out staggerSize))
-                                continue;
-                            if (staggerSize != numberOfNonces)
-                                continue;
-                            long expectedSize = (long)(Plot.PLOT_SIZE * numberOfNonces);
-                            FileInfo fi = new FileInfo(file);
-                            if (fi.Length != expectedSize)
-                                continue;
-                            value += expectedSize / 1000000000m;
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-                    }
-                }
-                catch
-                {
-                }
-                return value;
-            }
-        }
+        /// <summary>
+        /// Gets how much storage space this plot folder takes up in total as of the last scan.  A scan must have taken place first.
+        /// </summary>
+        public decimal UtilisedStorage { get; private set; }
 
         /// <summary>
         /// Gets how many scoops have been read this round.
@@ -119,6 +75,56 @@ namespace Guytp.BurstSharp.Miner
             _directory = directory;
         }
         #endregion
+
+        /// <summary>
+        /// Recalculates how much space all the plots take on disk.
+        /// </summary>
+        public void UpdateUtilisedStorage()
+        {
+            Logger.Debug("Scanning disk utilisation for " + _directory);
+            decimal value = 0;
+            try
+            {
+                string[] files = Directory.GetFiles(_directory, "*_*_*_*");
+                foreach (string file in files)
+                {
+                    try
+                    {
+                        // Get handle to file and ensure it is valid
+                        Stopwatch sw = new Stopwatch();
+                        sw.Start();
+                        string[] fileParts = Path.GetFileName(file).Split(new char[] { '_' }, 4);
+                        ulong accountId;
+                        ulong startNonce;
+                        ulong numberOfNonces;
+                        ulong staggerSize;
+                        if (!ulong.TryParse(fileParts[0], out accountId))
+                            continue;
+                        if (!ulong.TryParse(fileParts[1], out startNonce))
+                            continue;
+                        if (!ulong.TryParse(fileParts[2], out numberOfNonces))
+                            continue;
+                        if (!ulong.TryParse(fileParts[3], out staggerSize))
+                            continue;
+                        if (staggerSize != numberOfNonces)
+                            continue;
+                        long expectedSize = (long)(Plot.PLOT_SIZE * numberOfNonces);
+                        FileInfo fi = new FileInfo(file);
+                        if (fi.Length != expectedSize)
+                            continue;
+                        value += expectedSize / 1000000000m;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+                }
+            }
+            catch
+            {
+            }
+            UtilisedStorage = value;
+        }
 
         /// <summary>
         /// Commence mining for the current block.
@@ -165,6 +171,7 @@ namespace Guytp.BurstSharp.Miner
                 // Reset some values
                 BytesRead = 0;
                 ScoopsRead = 0;
+                ulong utilisedStorage = 0;
 
                 // Get which files to mine
                 string[] files = Directory.GetFiles(_directory, "*_*_*_*");
@@ -216,6 +223,7 @@ namespace Guytp.BurstSharp.Miner
                         Logger.Error("Plot file is not expected size, skipping " + file);
                         continue;
                     }
+                    utilisedStorage += (ulong)expectedSize;
 
                     // Now we have a good plot file let's take our scoop and for each nonce process it
                     uint desiredBufferSize = (uint)(Plot.SCOOP_SIZE * numberOfNonces);
@@ -271,6 +279,7 @@ namespace Guytp.BurstSharp.Miner
                         break;
                 }
                 Logger.Info(String.Format("Read {0} {3}GB in {1} secs = {2} MBps", _directory, swTotal.Elapsed.TotalSeconds, (BytesRead / swTotal.Elapsed.TotalSeconds) / 1000 / 1000, BytesRead / 1000 / 1000 / 1000));
+                UtilisedStorage = utilisedStorage;
             }
             catch (Exception ex)
             {

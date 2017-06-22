@@ -1,6 +1,7 @@
 ﻿using System;
 using Guytp.BurstSharp.BurstLib;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Guytp.BurstSharp.Miner
 {
@@ -20,16 +21,6 @@ namespace Guytp.BurstSharp.Miner
         /// Defines the hashing algorithm.
         /// </summary>
         private Shabal256 _shabel;
-
-        /// <summary>
-        /// Defines the plot checker we use to calculate deadlines.
-        /// </summary>
-        private PlotChecker _plotChecker;
-
-        /// <summary>
-        /// Defines the deadline submitter we use to manage our queue back to the network.
-        /// </summary>
-        private DeadlineSubmitter _deadlineSubmitter;
 
         /// <summary>
         /// Defines how many GB of total storage is used across all plot readers.
@@ -57,6 +48,13 @@ namespace Guytp.BurstSharp.Miner
         private bool _isAlive;
         #endregion
 
+        #region Events
+        /// <summary>
+        /// Fired whenever new scoops are discovered.
+        /// </summary>
+        public event EventHandler<ScoopsDiscoveredEventArgs> ScoopsDiscovered;
+        #endregion
+
         #region Constructors
         /// <summary>
         /// Create a new instance of this class.
@@ -65,25 +63,21 @@ namespace Guytp.BurstSharp.Miner
         {
             // Create our shabel for local hashing when determining the scoop number for each block
             _shabel = new Shabal256();
-
-            // Create our plot checker and hook up to its events
-            _plotChecker = new PlotChecker(Configuration.MemoryLimitPlotChecker / Plot.SCOOP_SIZE, Configuration.ThreadCountPlotChecker);
-            _plotChecker.DeadlineFound += PlotCheckerOnDeadlineFound;
-
-            // Setup our deadline submitter
-            _deadlineSubmitter = new DeadlineSubmitter();
-
+            
             // Now create and hook up to these events
+            Logger.Info("Initialising plot readers");
             if (Configuration.PlotDirectories != null && Configuration.PlotDirectories.Length > 0)
             {
                 _plotReaders = new PlotReader[Configuration.PlotDirectories.Length];
-                for (int i = 0; i < Configuration.PlotDirectories.Length; i++)
+                Parallel.For(0, Configuration.PlotDirectories.Length, (int i) =>
                 {
                     _plotReaders[i] = new PlotReader(Configuration.PlotDirectories[i]);
                     _plotReaders[i].ScoopsDiscovered += PlotReaderOnScoopsDiscovered;
+                    _plotReaders[i].UpdateUtilisedStorage();
                     _utilisedStorage += _plotReaders[i].UtilisedStorage;
-                }
+                });
             }
+            Logger.Debug("Finished initialising plot readers");
 
             // Start the progress monitor
             _isAlive = true;
@@ -104,21 +98,7 @@ namespace Guytp.BurstSharp.Miner
         /// </param>
         private void PlotReaderOnScoopsDiscovered(object sender, ScoopsDiscoveredEventArgs e)
         {
-            _plotChecker?.Enqueue(e.Scoops);
-        }
-
-        /// <summary>
-        /// Handle a deadline being discovered by the plot checker.
-        /// </summary>
-        /// <param name="sender">
-        /// The event sender.
-        /// </param>
-        /// <param name="e">
-        /// The event arguments.
-        /// </param>
-        private void PlotCheckerOnDeadlineFound(object sender, DeadlineFoundEventArgs e)
-        {
-            _deadlineSubmitter.NewDeadline(new Deadline(TimeSpan.FromSeconds(e.Deadline), e.Scoop, e.MiningInfo));
+            ScoopsDiscovered?.Invoke(this, e);
         }
         #endregion
 
@@ -192,7 +172,7 @@ namespace Guytp.BurstSharp.Miner
         /// <param name="miningInfo">
         /// The information to use to commence mining.
         /// </param>
-        public void ReadPlots(MiningInfo miningInfo)
+        public void NotifyNewRound(MiningInfo miningInfo)
         {
             // Store this value
             _lastRoundStart = DateTime.UtcNow;
@@ -201,27 +181,15 @@ namespace Guytp.BurstSharp.Miner
             // First let's kill any existing plot reading
             foreach (PlotReader reader in _plotReaders)
                 reader.Terminate();
-
-            // Inform deadline submission to scrap old deadlines
-            _deadlineSubmitter.Reset(miningInfo);
-
-            // Inform the plot checker of new block
-            _plotChecker.Reset(miningInfo);
-
+            
             // If no mining information stop now
             if (miningInfo == null)
-            {
-                Logger.Error("No mining information received, unable to mine");
                 return;
-            }
-
-            // Log that we're about to read the plots
-            Logger.Info("Starting new block: " + miningInfo.BlockHeight);
 
             // Throw error if we have no readers
             if (_plotReaders == null)
             {
-                Logger.Error("Unable to process new block " + miningInfo.BlockHeight + ", no plot readers available");
+                Logger.Warn("Unable to process new block " + miningInfo.BlockHeight + ", no plot readers available");
                 return;
             }
 
@@ -236,13 +204,6 @@ namespace Guytp.BurstSharp.Miner
             // With the config that we have we can now execute all of our readers
             foreach (PlotReader reader in _plotReaders)
                 reader.StartMining(miningInfo, scoop);
-
-            // Finally lets update storage details
-            decimal utilisedStorage = 0;
-            foreach (PlotReader reader in _plotReaders)
-                utilisedStorage += reader.UtilisedStorage;
-            _utilisedStorage = utilisedStorage;
-            _deadlineSubmitter.UpdateUtilisedStorage(utilisedStorage);
         }
 
         #region IDisposable Implementation
@@ -265,11 +226,6 @@ namespace Guytp.BurstSharp.Miner
                     reader.Dispose();
                 }
                 _plotReaders = null;
-            }
-            if (_plotChecker != null)
-            {
-                _plotChecker.DeadlineFound -= PlotCheckerOnDeadlineFound;
-                _plotChecker?.Dispose();
             }
         }
         #endregion

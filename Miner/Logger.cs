@@ -99,7 +99,8 @@ namespace Guytp.BurstSharp.Miner
                     foreground = ConsoleColor.White;
                     break;
             }
-            ConsoleUi.WriteLine(message, foreground);
+            string formattedMessage = string.Format("[{0:HH}:{0:mm}:{0:ss}] {1}", DateTime.Now, message);
+            ConsoleUi.WriteLine(formattedMessage, foreground);
             if (ex != null)
                 ConsoleUi.WriteLine(ex.ToString(), foreground);
         }

@@ -737,11 +737,7 @@ namespace Guytp.BurstSharp.Miner
         public static void WriteLine(string text, ConsoleColor foreground = ConsoleColor.White, ConsoleColor background = ConsoleColor.Blue)
         {
             if (_applicationInstance == null || !_applicationInstance._isAlive)
-            {
-                Console.ForegroundColor = foreground;
-                Console.BackgroundColor = background;
                 Console.WriteLine(text);
-            }
             else
             {
                 lock (_applicationInstance._textLocker)
