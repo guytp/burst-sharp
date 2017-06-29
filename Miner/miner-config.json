@@ -1,7 +1,7 @@
 ﻿{
   "PlotDirectories": [
-    "\\\\10.0.1.31\\Plot",
-    "\\\\10.0.1.32\\Plot02"
+    "d:\Plots",
+    "e:\Plots"
   ],
   "PoolApiUrl": "http://pool.burstcoin.sk",
   "ThreadCountPlotChecker": 4,
