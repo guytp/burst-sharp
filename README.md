@@ -1,4 +1,4 @@
-# burst-sharp
+﻿# burst-sharp
 burst-sharp is a suite of tools for Burstcoin written using .Net Core 2.0.0.  The idea is to create a full suite of easy-to-use tools for Burstcoin that function across platforms and processor architectures.
 
 Currently burst-sharp should be considered a in early prototype stages and the only application ready to test is the miner.
@@ -40,7 +40,7 @@ You definitely want to change PlotDirectories and PoolApiUrl.  Just to get going
 
 | Setting | Details |
 |:--------|--------:|
-| **PlotDirectories** | A list of paths in quotes separated by spaces - this is where your plot files are (i.e. "D:\", "C:\" or "/mnt/Disk1", "/mnt/Disk2" depending on your platform). |
+| **PlotDirectories** | A list of paths in quotes separated by spaces - this is where your plot files are (i.e. "D:\\Plots", "C:\\" or "/mnt/Disk1", "/mnt/Disk2" depending on your platform).  You must use two backslashes instead of one (i.e. \\ instead of \) for paths as a single \ is considered a special character. |
 | **PoolApiUrl** | This is the address that you use to communication between your miner and pool - for example http://mypool.com:8124. |
 | **ThreadCountPlotChecker** | The maximum number of threads that you want to use to read plots.  This should be equal to the number of logical CPU cores (including hyper threads) that you have.  The PlotChecker is responsible for taking the plots read from disk and validating deadlines so the more the better but don't have more than you do CPU cores as this won't create any benefit. |
 | **MemoryLimitPerReader** | This is used as a maximum allowed memory (in megabytes) size that is read from disk.  It's very unlikely this much will be used but if you want to be on the safe side take half your RAM and divide it by the number of disks that you have and round it.  For example 8GB RAM with 10 disks would give 410 here (8192 / 2 / 10).  The default is probably fine unless you experience problems. |
